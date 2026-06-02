@@ -1,0 +1,197 @@
+{% extends 'coreapp/base.html' %}
+{% load static %}
+
+{% block title %}PharmaScan - Tự động hóa điền form nhập liệu Y tế & Dược phẩm{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero-section" id="hero">
+    <div class="container hero-grid">
+        <div class="hero-text-content">
+            <div class="badge fade-in">
+                <span class="badge-dot"></span>
+                <span>Công nghệ Chuyển đổi Số Y tế Mới Nhất</span>
+            </div>
+            <h1 class="hero-title fade-in">
+                Tự động hóa <br>
+                <span class="gradient-text">Nhập liệu Dược phẩm</span> <br>
+                từ File Word
+            </h1>
+            <p class="hero-subtitle fade-in">
+                Loại bỏ hoàn toàn quy trình nhập tay thủ công dễ sai sót. Tải lên tài liệu Word thông tin sản phẩm và chứng kiến dữ liệu được tự động phân tích, chuyển đổi thành form HTML chỉ trong 3 giây.
+            </p>
+            <div class="hero-actions fade-in">
+                <a href="{% url 'scan_demo' %}" class="btn btn-primary" id="btn-hero-start">
+                    <span>Trải Nghiệm Quét Ngay</span>
+                    <svg class="btn-arrow" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M5 12H19M19 12L12 5M19 12L12 19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </a>
+                <a href="#about-section" class="btn btn-secondary" id="btn-hero-learn">
+                    <span>Tìm hiểu thêm</span>
+                </a>
+            </div>
+        </div>
+        
+        <div class="hero-visual-content fade-in">
+            <!-- Simulated Scanning UI Dashboard -->
+            <div class="mockup-dashboard">
+                <div class="mockup-header">
+                    <span class="dot red"></span>
+                    <span class="dot yellow"></span>
+                    <span class="dot green"></span>
+                    <span class="mockup-title">PharmaScan Analyzer v2.0</span>
+                </div>
+                <div class="mockup-body">
+                    <div class="mockup-file-card">
+                        <svg class="file-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                            <polyline points="10 9 9 9 8 9"></polyline>
+                        </svg>
+                        <div class="file-info">
+                            <span class="file-name">Thongtin_Paracetamol.docx</span>
+                            <span class="file-size">48 KB • Word Document</span>
+                        </div>
+                        <div class="scan-badge">Đã nhận</div>
+                    </div>
+                    
+                    <div class="scanning-simulator">
+                        <div class="laser-beam-home"></div>
+                        <div class="extracting-lines">
+                            <div class="extract-line l1"></div>
+                            <div class="extract-line l2"></div>
+                            <div class="extract-line l3"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="mockup-form-preview">
+                        <div class="preview-row"><span class="label">Tên thuốc:</span> <span class="val pulse-text">Paracetamol 500mg</span></div>
+                        <div class="preview-row"><span class="label">Hoạt chất:</span> <span class="val pulse-text">Acetaminophen</span></div>
+                        <div class="preview-row"><span class="label">Số ĐK:</span> <span class="val pulse-text">VD-21415-14</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- About & Problem Section -->
+<section class="about-section" id="about-section">
+    <div class="container">
+        <div class="section-header">
+            <h2 class="section-title">Thực Trạng & Vấn Đề</h2>
+            <p class="section-subtitle">Tại sao các công ty Dược phẩm cần thay đổi quy trình nhập liệu truyền thống ngay hôm nay?</p>
+        </div>
+        
+        <div class="problem-grid">
+            <!-- Left Side: Manual Input (Problem) -->
+            <div class="card card-problem">
+                <div class="card-icon-container text-red">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                    </svg>
+                </div>
+                <h3 class="card-title">Nhập Liệu Thủ Công (Hiện tại)</h3>
+                <p class="card-text">
+                    Khách hàng và nhân viên y tế đang phải gõ tay từng trường dữ liệu phức tạp từ các tài liệu hướng dẫn sử dụng, phiếu đăng ký thuốc, hoặc đơn hàng.
+                </p>
+                <ul class="problem-list">
+                    <li>
+                        <svg class="icon-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        <span>Cực kỳ tốn thời gian (trung bình 5-10 phút cho mỗi form dài).</span>
+                    </li>
+                    <li>
+                        <svg class="icon-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        <span>Tỷ lệ sai sót cao đối với số lô, hoạt chất và biệt dược.</span>
+                    </li>
+                    <li>
+                        <svg class="icon-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        <span>Gây mỏi mắt, stress và giảm hiệu suất làm việc của nhân viên.</span>
+                    </li>
+                </ul>
+            </div>
+            
+            <!-- Right Side: Auto Scan (Solution) -->
+            <div class="card card-solution">
+                <div class="card-icon-container text-green">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                    </svg>
+                </div>
+                <h3 class="card-title">Tự Động Hóa Quét PharmaScan</h3>
+                <p class="card-text">
+                    Hệ thống tự động đọc file Word thông tin thuốc đã được convert thành định dạng HTML, nhận diện chính xác các cấu trúc dữ liệu và điền tự động vào hệ thống.
+                </p>
+                <ul class="solution-list">
+                    <li>
+                        <svg class="icon-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        <span>Hoàn thành trong 3 giây (Tiết kiệm 95% thời gian xử lý).</span>
+                    </li>
+                    <li>
+                        <svg class="icon-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        <span>Độ chính xác tiệm cận tuyệt đối nhờ cấu trúc HTML chuẩn.</span>
+                    </li>
+                    <li>
+                        <svg class="icon-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        <span>Thao tác kéo thả đơn giản, giao diện trực quan, dễ sử dụng.</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Solution Section -->
+<section class="solution-section" id="solution-section">
+    <div class="container">
+        <div class="section-header">
+            <h2 class="section-title">Giải Pháp Công Nghệ Toàn Diện</h2>
+            <p class="section-subtitle">Phương pháp hoạt động và các công nghệ cốt lõi giúp tối ưu hóa quy trình nhập liệu ngành Dược.</p>
+        </div>
+        
+        <div class="steps-container">
+            <div class="step-card">
+                <div class="step-num">01</div>
+                <h4 class="step-title">Convert Word sang HTML</h4>
+                <p class="step-desc">Tài liệu hướng dẫn sử dụng thuốc (.docx) được chuyển đổi nguyên vẹn cấu trúc bảng biểu, văn bản thành dạng HTML tiêu chuẩn.</p>
+            </div>
+            
+            <div class="step-card">
+                <div class="step-num">02</div>
+                <h4 class="step-title">Quét & Nhận Diện</h4>
+                <p class="step-desc">Hệ thống phân tích cấu trúc thẻ HTML của file đã convert, trích xuất tự động các phần tiêu đề và các trường thông tin y tế.</p>
+            </div>
+            
+            <div class="step-card">
+                <div class="step-num">03</div>
+                <h4 class="step-title">Tự động điền (Autofill)</h4>
+                <p class="step-desc">Các dữ liệu trích xuất được điền tự động vào Form HTML đích, làm nổi bật thông tin để người dùng kiểm tra và lưu trữ lập tức.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- CTA Banner Section -->
+<section class="cta-banner-section">
+    <div class="container">
+        <div class="cta-banner-card">
+            <div class="cta-glow"></div>
+            <h2 class="cta-title">Sẵn Sàng Loại Bỏ Nhập Liệu Thủ Công?</h2>
+            <p class="cta-text">
+                Hãy trực tiếp trải nghiệm thử công nghệ quét và tự động điền form của chúng tôi với một file Word giả định. Trải nghiệm hoàn toàn miễn phí và không cần đăng nhập.
+            </p>
+            <a href="{% url 'scan_demo' %}" class="btn btn-primary btn-cta-action" id="btn-cta-explore">
+                <span>Trải Nghiệm Bản Demo Giao Diện</span>
+                <svg class="btn-arrow" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M5 12H19M19 12L12 5M19 12L12 19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </a>
+        </div>
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,529 @@
+{% extends 'coreapp/base.html' %}
+{% load static %}
+
+{% block title %}Bảng Điều Khiển Quản Trị | PharmaScan{% endblock %}
+
+{% block extra_head %}
+<style>
+    /* Custom style override to hide base navbar/footer on Dashboard for cleaner space */
+    .header, .footer {
+        display: none !important;
+    }
+    body {
+        padding-top: 0 !important;
+        background-color: var(--bg-dark);
+    }
+    .main-content {
+        min-height: 100vh;
+        display: flex;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-wrapper w-full">
+    <!-- 1. LEFT SIDEBAR PANEL -->
+    <aside class="db-sidebar">
+        <div class="db-sidebar-brand">
+            <a href="{% url 'home' %}" class="logo">
+                <svg class="logo-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="3" y="10" width="18" height="8" rx="4" transform="rotate(-45 3 10)" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/>
+                    <path d="M9.5 9.5L14.5 14.5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+                    <circle cx="17.5" cy="6.5" r="2" fill="currentColor"/>
+                </svg>
+                <span class="logo-text">Pharma<span class="highlight">Scan</span></span>
+            </a>
+            <span class="db-role-badge">ADMIN PANEL</span>
+        </div>
+
+        <nav class="db-sidebar-menu">
+            <button class="db-menu-item active" data-tab="tab-overview">
+                <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                <span>Tổng quan KPI</span>
+            </button>
+            <button class="db-menu-item" data-tab="tab-scans">
+                <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                <span>Lịch sử & Duyệt</span>
+                <span class="pending-count-bubble" id="side-pending-bubble">1</span>
+            </button>
+            <button class="db-menu-item" data-tab="tab-medicines">
+                <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
+                <span>Danh mục Dược phẩm</span>
+            </button>
+            <button class="db-menu-item" data-tab="tab-templates">
+                <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+                <span>Cấu hình Mẫu Word</span>
+            </button>
+        </nav>
+
+        <div class="db-sidebar-footer">
+            <div class="user-profile-flex">
+                <div class="avatar">DS</div>
+                <div class="user-info">
+                    <span class="user-name">Dược sĩ Admin</span>
+                    <span class="user-role">Kiểm duyệt viên cấp cao</span>
+                </div>
+            </div>
+            <a href="{% url 'home' %}" class="btn-logout" title="Đăng xuất">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                <span>Đăng xuất</span>
+            </a>
+        </div>
+    </aside>
+
+    <!-- 2. MAIN DASHBOARD CONTENT AREA -->
+    <main class="db-main">
+        <header class="db-navbar">
+            <div class="db-nav-left">
+                <h2 id="db-tab-title">Tổng quan Hệ thống</h2>
+            </div>
+            <div class="db-nav-right">
+                <div class="db-date-today" id="db-live-date">Thứ Năm, 28 Tháng 5, 2026</div>
+                <div class="db-nav-action-buttons">
+                    <a href="{% url 'scan_demo' %}" class="btn btn-secondary btn-nav">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height:14px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        <span>Quét Tệp Mới</span>
+                    </a>
+                </div>
+            </div>
+        </header>
+
+        <div class="db-content-scroll">
+            <!-- ==========================================================
+                 TAB 1: OVERVIEW TAB
+                 ========================================================== -->
+            <div class="db-tab-pane active" id="tab-overview">
+                <!-- KPI Status Cards Grid -->
+                <div class="kpi-grid">
+                    <div class="kpi-card glass-card">
+                        <div class="kpi-icon-wrapper blue">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                        </div>
+                        <div class="kpi-details">
+                            <span class="kpi-num" id="kpi-total">48</span>
+                            <span class="kpi-label">Tổng tệp Word đã quét</span>
+                        </div>
+                    </div>
+
+                    <div class="kpi-card glass-card" id="kpi-pending-card">
+                        <div class="kpi-icon-wrapper orange pulse-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                        </div>
+                        <div class="kpi-details">
+                            <span class="kpi-num" id="kpi-pending" style="color: #f59e0b;">1</span>
+                            <span class="kpi-label">Hồ sơ chờ duyệt</span>
+                        </div>
+                    </div>
+
+                    <div class="kpi-card glass-card">
+                        <div class="kpi-icon-wrapper green">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                        </div>
+                        <div class="kpi-details">
+                            <span class="kpi-num" id="kpi-approved" style="color: var(--success);">47</span>
+                            <span class="kpi-label">Dược phẩm đã duyệt kho</span>
+                        </div>
+                    </div>
+
+                    <div class="kpi-card glass-card">
+                        <div class="kpi-icon-wrapper purple">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
+                        </div>
+                        <div class="kpi-details">
+                            <span class="kpi-num">98.6%</span>
+                            <span class="kpi-label">Độ chính xác trích xuất AI</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Display Grid -->
+                <div class="charts-grid">
+                    <!-- Column Left: Interactive SVG Chart -->
+                    <div class="card glass-card chart-container-card">
+                        <h4 class="chart-card-title">Tần Suất Quét Tài Liệu Theo Tuần</h4>
+                        <div class="svg-chart-wrapper">
+                            <svg class="svg-line-chart" viewBox="0 0 500 200">
+                                <defs>
+                                    <linearGradient id="chart-glow" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stop-color="var(--primary)" stop-opacity="0.4"/>
+                                        <stop offset="100%" stop-color="var(--primary)" stop-opacity="0"/>
+                                    </linearGradient>
+                                </defs>
+                                <!-- Grid Lines -->
+                                <line x1="30" y1="20" x2="480" y2="20" stroke="rgba(255,255,255,0.03)" stroke-width="1"/>
+                                <line x1="30" y1="70" x2="480" y2="70" stroke="rgba(255,255,255,0.03)" stroke-width="1"/>
+                                <line x1="30" y1="120" x2="480" y2="120" stroke="rgba(255,255,255,0.03)" stroke-width="1"/>
+                                <line x1="30" y1="170" x2="480" y2="170" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
+                                
+                                <!-- Chart Area -->
+                                <path d="M 30 170 Q 100 80 170 120 T 310 50 T 450 60 L 450 170 Z" fill="url(#chart-glow)"/>
+                                <path d="M 30 170 Q 100 80 170 120 T 310 50 T 450 60" fill="none" stroke="var(--primary)" stroke-width="3" stroke-linecap="round"/>
+                                
+                                <!-- Dot points -->
+                                <circle cx="100" cy="98" r="4" fill="var(--bg-dark)" stroke="var(--primary)" stroke-width="2" />
+                                <circle cx="170" cy="120" r="4" fill="var(--bg-dark)" stroke="var(--primary)" stroke-width="2" />
+                                <circle cx="240" cy="85" r="4" fill="var(--bg-dark)" stroke="var(--primary)" stroke-width="2" />
+                                <circle cx="310" cy="50" r="4" fill="var(--bg-dark)" stroke="var(--primary)" stroke-width="2" />
+                                <circle cx="380" cy="53" r="4" fill="var(--bg-dark)" stroke="var(--primary)" stroke-width="2" />
+                                <circle cx="450" cy="60" r="4" fill="var(--bg-dark)" stroke="var(--primary)" stroke-width="2" />
+                                
+                                <!-- X Axis Labels -->
+                                <text x="25" y="190" fill="var(--text-muted)" font-size="9px">Thứ 2</text>
+                                <text x="95" y="190" fill="var(--text-muted)" font-size="9px">Thứ 3</text>
+                                <text x="165" y="190" fill="var(--text-muted)" font-size="9px">Thứ 4</text>
+                                <text x="235" y="190" fill="var(--text-muted)" font-size="9px">Thứ 5</text>
+                                <text x="305" y="190" fill="var(--text-muted)" font-size="9px">Thứ 6</text>
+                                <text x="375" y="190" fill="var(--text-muted)" font-size="9px">Thứ 7</text>
+                                <text x="445" y="190" fill="var(--text-muted)" font-size="9px">CN</text>
+                            </svg>
+                        </div>
+                    </div>
+
+                    <!-- Column Right: Distribution Progress list -->
+                    <div class="card glass-card chart-container-card">
+                        <h4 class="chart-card-title">Phân Bổ Danh Mục Dược Phẩm Đã Quét</h4>
+                        <div class="distribution-list">
+                            <div class="dist-row">
+                                <div class="dist-labels"><span class="name">Thuốc Giảm Đau & Hạ Sốt</span><span class="pct">42%</span></div>
+                                <div class="dist-progress-bar"><div class="progress" style="width: 42%; background-color: var(--primary);"></div></div>
+                            </div>
+                            <div class="dist-row">
+                                <div class="dist-labels"><span class="name">Thuốc Kháng Sinh & Kháng Viêm</span><span class="pct">30%</span></div>
+                                <div class="dist-progress-bar"><div class="progress" style="width: 30%; background-color: var(--secondary);"></div></div>
+                            </div>
+                            <div class="dist-row">
+                                <div class="dist-labels"><span class="name">Vắc-xin & Sinh Phẩm Y Tế</span><span class="pct">18%</span></div>
+                                <div class="dist-progress-bar"><div class="progress" style="width: 18%; background-color: var(--accent);"></div></div>
+                            </div>
+                            <div class="dist-row">
+                                <div class="dist-labels"><span class="name">Vitamin & Thực phẩm chức năng</span><span class="pct">10%</span></div>
+                                <div class="dist-progress-bar"><div class="progress" style="width: 10%; background-color: #8b5cf6;"></div></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==========================================================
+                 TAB 2: SCANS HISTORY & AUDIT TAB
+                 ========================================================== -->
+            <div class="db-tab-pane hidden" id="tab-scans">
+                <div class="card glass-card table-card">
+                    <div class="table-actions-header">
+                        <h4 class="table-inner-title">Danh sách tài liệu đã quét</h4>
+                        <div class="table-search-box">
+                            <input type="text" class="table-search-input" placeholder="Tìm kiếm tài liệu...">
+                        </div>
+                    </div>
+
+                    <div class="table-responsive-container">
+                        <table class="db-table" id="scans-history-table">
+                            <thead>
+                                <tr>
+                                    <th>Tên Tài Liệu Word</th>
+                                    <th>Người Quét</th>
+                                    <th>Ngày Quét</th>
+                                    <th>Độ chính xác</th>
+                                    <th>Trạng Thái</th>
+                                    <th>Thao Tác</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Row 1: Pending Audit (Interactive) -->
+                                <tr class="table-row-pending" id="row-pending-amox" style="cursor: pointer;">
+                                    <td class="file-cell">
+                                        <svg class="file-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                                        <span>ChungNhanChatLuong_Amoxicillin_250mg.docx</span>
+                                    </td>
+                                    <td>Nguyễn Văn A</td>
+                                    <td>28/05/2026</td>
+                                    <td class="pct-cell success-text">99.2%</td>
+                                    <td><span class="status-pill orange-pill" id="badge-pending-amox">Chờ Duyệt</span></td>
+                                    <td><button class="btn btn-primary btn-nav btn-table-audit" id="btn-trigger-audit">Kiểm Duyệt</button></td>
+                                </tr>
+
+                                <!-- Row 2: Already Approved -->
+                                <tr>
+                                    <td class="file-cell">
+                                        <svg class="file-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                                        <span>PhieuThongTin_Paracetamol_500mg.docx</span>
+                                    </td>
+                                    <td>Trần Thị B</td>
+                                    <td>27/05/2026</td>
+                                    <td class="pct-cell success-text">98.5%</td>
+                                    <td><span class="status-pill green-pill">Đã Duyệt</span></td>
+                                    <td><button class="btn btn-secondary btn-nav" disabled>Đã lưu</button></td>
+                                </tr>
+
+                                <!-- Row 3: Already Approved -->
+                                <tr>
+                                    <td class="file-cell">
+                                        <svg class="file-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                                        <span>XacNhanNhapKhau_BioFlu_Vaccine.docx</span>
+                                    </td>
+                                    <td>Nguyễn Văn A</td>
+                                    <td>26/05/2026</td>
+                                    <td class="pct-cell success-text">99.0%</td>
+                                    <td><span class="status-pill green-pill">Đã Duyệt</span></td>
+                                    <td><button class="btn btn-secondary btn-nav" disabled>Đã lưu</button></td>
+                                </tr>
+
+                                <!-- Row 4: Rejected -->
+                                <tr>
+                                    <td class="file-cell">
+                                        <svg class="file-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                                        <span>ToaThuoc_KhangSinh_Hong.docx</span>
+                                    </td>
+                                    <td>Trần Thị B</td>
+                                    <td>25/05/2026</td>
+                                    <td class="pct-cell danger-text">82.4%</td>
+                                    <td><span class="status-pill red-pill">Bị Từ Chối</span></td>
+                                    <td><button class="btn btn-secondary btn-nav" disabled>Lỗi cấu trúc</button></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==========================================================
+                 TAB 3: MEDICINES DIRECTORY TAB
+                 ========================================================== -->
+            <div class="db-tab-pane hidden" id="tab-medicines">
+                <div class="card glass-card medicines-dir-card">
+                    <div class="medicines-header-actions">
+                        <div class="left-box">
+                            <h4 class="table-inner-title">Kho Dược phẩm Số hóa</h4>
+                            <p class="section-subtitle" style="text-align: left; font-size: 0.8rem;">Danh sách các loại thuốc đã được quét và nhập hệ thống y tế thành công.</p>
+                        </div>
+                        <div class="right-actions-download">
+                            <!-- Download simulated actions -->
+                            <div class="download-progress-container hidden" id="dl-progress-box">
+                                <span class="dl-status-text" id="dl-status-label">Đang nén dữ liệu...</span>
+                                <div class="dl-progress-bar"><div class="fill" id="dl-progress-fill" style="width: 0%"></div></div>
+                            </div>
+                            
+                            <button class="btn btn-primary" id="btn-export-excel">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px; height:16px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                                <span>Xuất file Excel</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive-container" style="margin-top: 24px;">
+                        <table class="db-table" id="medicines-table">
+                            <thead>
+                                <tr>
+                                    <th>Mã Định Danh</th>
+                                    <th>Tên Biệt Dược</th>
+                                    <th>Hoạt Chất Phân Tích</th>
+                                    <th>Hàm Lượng</th>
+                                    <th>Dạng Bào Chế</th>
+                                    <th>Số Đăng Ký</th>
+                                    <th>Số Lô</th>
+                                    <th>Hạn Sử Dụng</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="mono-cell">MED-PARA-101</td>
+                                    <td class="bold-cell">Paracetamol Extra</td>
+                                    <td>Acetaminophen (Paracetamol)</td>
+                                    <td>500mg</td>
+                                    <td>Viên nén bao phim</td>
+                                    <td class="mono-cell">VD-21588-14</td>
+                                    <td class="mono-cell">LOT-PARA2026</td>
+                                    <td class="success-text">20/05/2029</td>
+                                </tr>
+                                <tr>
+                                    <td class="mono-cell">MED-VAC-004</td>
+                                    <td class="bold-cell">BioFlu-TC</td>
+                                    <td>Kháng nguyên Virus Cúm bất hoạt</td>
+                                    <td>0.5ml / Liều</td>
+                                    <td>Hỗn dịch tiêm</td>
+                                    <td class="mono-cell">QLSP-1102-25</td>
+                                    <td class="mono-cell">LOT-VAC4082</td>
+                                    <td class="success-text">01/01/2028</td>
+                                </tr>
+                                <!-- Dynamic newly approved medicine row will insert here simulated -->
+                                <tr class="hidden" id="dynamic-row-amox">
+                                    <td class="mono-cell">MED-AMOX-892</td>
+                                    <td class="bold-cell" id="dyn-trade">Amoxipharm 250</td>
+                                    <td id="dyn-active">Amoxicillin Trihydrate</td>
+                                    <td id="dyn-strength">250mg</td>
+                                    <td id="dyn-dosage">Viên nang cứng</td>
+                                    <td class="mono-cell" id="dyn-reg">VD-18239-12</td>
+                                    <td class="mono-cell" id="dyn-batch">LOT-AMOX9925</td>
+                                    <td class="success-text" id="dyn-exp">12/03/2029</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==========================================================
+                 TAB 4: TEMPLATES CONFIG TAB
+                 ========================================================== -->
+            <div class="db-tab-pane hidden" id="tab-templates">
+                <div class="card glass-card templates-card">
+                    <h4 class="table-inner-title" style="margin-bottom: 12px;">Sơ đồ Bản đồ Ánh xạ (Field Mapping Schema)</h4>
+                    <p class="section-subtitle" style="text-align: left; font-size: 0.8rem; margin-bottom: 24px;">Hệ thống nhận diện cấu trúc file Word thông qua các thẻ HTML đã chuyển đổi để ánh xạ chính xác sang cơ sở dữ liệu.</p>
+                    
+                    <div class="template-map-grid">
+                        <div class="map-card glass-card">
+                            <div class="map-card-header">
+                                <span class="label">FILE WORD HTML NODES</span>
+                                <span class="connector">══▶</span>
+                                <span class="label">DATABASE FIELDS</span>
+                            </div>
+                            <div class="map-rows">
+                                <div class="map-row">
+                                    <code class="node">&lt;td class="bold"&gt;Tên thuốc...&lt;/td&gt;</code>
+                                    <span class="line-dot">➔</span>
+                                    <code class="db-field">trade_name</code>
+                                </div>
+                                <div class="map-row">
+                                    <code class="node">&lt;p&gt;Hoạt chất chính: ...&lt;/p&gt;</code>
+                                    <span class="line-dot">➔</span>
+                                    <code class="db-field">active_ingredient</code>
+                                </div>
+                                <div class="map-row">
+                                    <code class="node">&lt;span&gt;Hàm lượng:...&lt;/span&gt;</code>
+                                    <span class="line-dot">➔</span>
+                                    <code class="db-field">strength</code>
+                                </div>
+                                <div class="map-row">
+                                    <code class="node">&lt;td&gt;Dạng bào chế:...&lt;/td&gt;</code>
+                                    <span class="line-dot">➔</span>
+                                    <code class="db-field">dosage_form</code>
+                                </div>
+                                <div class="map-row">
+                                    <code class="node">&lt;p&gt;Nhà sản xuất: ...&lt;/p&gt;</code>
+                                    <span class="line-dot">➔</span>
+                                    <code class="db-field">manufacturer</code>
+                                </div>
+                                <div class="map-row">
+                                    <code class="node">&lt;td&gt;Số lô:...&lt;/td&gt;</code>
+                                    <span class="line-dot">➔</span>
+                                    <code class="db-field">batch_number</code>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- ==========================================================
+     SIDE-BY-SIDE AUDIT & PHARMA REVIEW MODAL
+     ========================================================== -->
+<div class="modal-overlay hidden" id="audit-modal" style="background: rgba(7, 10, 19, 0.9);">
+    <div class="modal-card audit-modal-card">
+        <div class="audit-modal-header">
+            <div class="header-left">
+                <span class="badge" style="margin-bottom: 0;">Phiếu Kiểm Duyệt Dược Phẩm</span>
+                <h3>Duyệt hồ sơ trích xuất dữ liệu</h3>
+            </div>
+            <button class="btn-remove-file" id="btn-close-audit-modal" style="background: rgba(255,255,255,0.05); color: #94a3b8;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+        </div>
+
+        <div class="audit-modal-body">
+            <!-- Left Column: Source Document Word Preview -->
+            <div class="audit-side-col col-left">
+                <div class="side-col-header">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="doc-icon" style="width:16px; height:16px; color:#2563eb;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                    <span>Văn bản Word gốc (Convert HTML)</span>
+                </div>
+                <div class="document-preview-paper" style="max-height: 400px; height: 400px;">
+                    <div class="paper-content-simulate" style="font-size: 0.72rem; color: #1e293b;">
+                        <div class="sim-paragraph p-title" style="color: #0f172a;">PHIẾU KIỂM NGHIỆM CHẤT LƯỢNG</div>
+                        <div class="sim-paragraph p-bold" style="color: #0f172a;">Tên thương mại: Amoxipharm 250</div>
+                        <div class="sim-paragraph" style="color: #334155;"><strong>Hoạt chất chính</strong>: Amoxicillin Trihydrate tương đương Amoxicillin khan 250mg. Tá dược: Tinh bột ngô, Magnesi stearat vừa đủ 1 viên nang.</div>
+                        <div class="sim-paragraph" style="color: #334155;"><strong>Nhà sản xuất</strong>: Tổng công ty Dược Việt Nam (Vinapharm). Địa chỉ: Khu công nghiệp VSIP, Bình Dương.</div>
+                        <div class="sim-paragraph" style="color: #334155;"><strong>Số đăng ký lưu hành</strong>: VD-18239-12. <strong>Số lô sản xuất</strong>: LOT-AMOX9925. <strong>Ngày sản xuất</strong>: 12/03/2026. <strong>Hạn sử dụng</strong>: 36 tháng kể từ ngày sản xuất (HSD: 12/03/2029).</div>
+                        <div class="sim-paragraph" style="color: #334155;"><strong>Chỉ định</strong>: Các nhiễm khuẩn do vi khuẩn nhạy cảm gây ra ở đường hô hấp trên, đường hô hấp dưới, da và mô mềm, đường tiết niệu không biến chứng.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Extracted Destination HTML Form -->
+            <div class="audit-side-col col-right">
+                <div class="side-col-header">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="doc-icon" style="width: 16px; height:16px; color:var(--success);"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                    <span>Biểu mẫu Dược phẩm đích (Có thể sửa)</span>
+                </div>
+                
+                <form id="audit-correction-form" class="medical-form" style="max-height: 400px; overflow-y: auto; padding: 10px 4px;">
+                    <div class="form-grid-2">
+                        <div class="form-group">
+                            <label for="aud-trade_name" class="form-label">Tên Thương Mại</label>
+                            <input type="text" id="aud-trade_name" class="form-input filled-highlight" value="Amoxipharm 250">
+                        </div>
+                        <div class="form-group">
+                            <label for="aud-active_ingredient" class="form-label">Hoạt Chất Chính</label>
+                            <input type="text" id="aud-active_ingredient" class="form-input filled-highlight" value="Amoxicillin Trihydrate">
+                        </div>
+                    </div>
+
+                    <div class="form-grid-2">
+                        <div class="form-group">
+                            <label for="aud-strength" class="form-label">Hàm Lượng / Nồng Độ</label>
+                            <input type="text" id="aud-strength" class="form-input filled-highlight" value="250mg">
+                        </div>
+                        <div class="form-group">
+                            <label for="aud-dosage_form" class="form-label">Dạng Bào Chế</label>
+                            <input type="text" id="aud-dosage_form" class="form-input filled-highlight" value="Viên nang cứng">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="aud-manufacturer" class="form-label">Nhà Sản Xuất</label>
+                        <input type="text" id="aud-manufacturer" class="form-input filled-highlight" value="Tổng công ty Dược Việt Nam (Vinapharm)">
+                    </div>
+
+                    <div class="form-grid-2">
+                        <div class="form-group">
+                            <label for="aud-batch_number" class="form-label">Số Lô Sản Xuất</label>
+                            <input type="text" id="aud-batch_number" class="form-input filled-highlight" value="LOT-AMOX9925">
+                        </div>
+                        <div class="form-group">
+                            <label for="aud-registration_number" class="form-label">Số Đăng Ký Lưu Hành</label>
+                            <input type="text" id="aud-registration_number" class="form-input filled-highlight" value="VD-18239-12">
+                        </div>
+                    </div>
+
+                    <div class="form-grid-2">
+                        <div class="form-group">
+                            <label for="aud-mfg_date" class="form-label">Ngày Sản Xuất</label>
+                            <input type="text" id="aud-mfg_date" class="form-input filled-highlight" value="12/03/2026">
+                        </div>
+                        <div class="form-group">
+                            <label for="aud-exp_date" class="form-label">Hạn Sử Dụng</label>
+                            <input type="text" id="aud-exp_date" class="form-input filled-highlight" value="12/03/2029">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="aud-indications" class="form-label">Chỉ Định Điều Trị</label>
+                        <textarea id="aud-indications" class="form-input form-textarea filled-highlight">Các nhiễm khuẩn ở đường hô hấp trên và dưới, da và mô mềm, đường tiết niệu do vi khuẩn nhạy cảm.</textarea>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="audit-modal-footer">
+            <button class="btn btn-secondary" id="btn-audit-reject" style="background: rgba(244, 63, 94, 0.05); color: var(--danger); border-color: rgba(244, 63, 94, 0.2);">
+                <span>Từ Chối Phê Duyệt</span>
+            </button>
+            <button class="btn btn-primary" id="btn-audit-approve" style="background: linear-gradient(135deg, var(--success) 0%, #059669 100%); box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);">
+                <span>Duyệt & Lưu Vào Kho Thuốc</span>
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}

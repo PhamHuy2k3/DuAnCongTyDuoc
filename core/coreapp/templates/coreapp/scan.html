@@ -1,0 +1,679 @@
+{% extends 'coreapp/base.html' %}
+{% load static %}
+
+{% block title %}Trải nghiệm Quét Tự động hóa Nhập liệu | PharmaScan{% endblock %}
+
+{% block extra_head %}
+<style>
+    /* Custom Styling for Lab Receipt Photo Scanner Mockup */
+    .receipt-mockup-wrapper {
+        width: 100%;
+        height: 100%;
+        background-color: #e2e8f0;
+        border-radius: var(--border-radius-sm);
+        padding: 16px;
+        position: relative;
+        overflow-y: auto;
+        max-height: 250px;
+        box-shadow: inset 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .receipt-paper {
+        width: 100%;
+        background: #fdfdfd;
+        border-radius: 4px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+        padding: 20px 16px;
+        color: #1e293b;
+        font-family: monospace;
+        font-size: 0.62rem;
+        line-height: 1.3;
+        position: relative;
+    }
+    
+    .handwritten-header {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 12px;
+        padding-bottom: 6px;
+        border-bottom: 1px dashed #cbd5e1;
+    }
+    
+    .handwritten-text {
+        font-family: 'Outfit', cursive, sans-serif;
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #2563eb; /* Blue ink pen */
+        transform: rotate(-3deg);
+        text-shadow: 1px 1px 1px rgba(37, 99, 235, 0.15);
+    }
+    
+    .receipt-columns {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+        border-right: 1px dashed #cbd5e1;
+    }
+    
+    .receipt-column {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .receipt-block {
+        border-bottom: 1px solid #e2e8f0;
+        padding-bottom: 6px;
+        position: relative;
+    }
+    
+    .receipt-block span {
+        display: block;
+    }
+    
+    .weight-val {
+        font-weight: 800;
+        font-size: 0.68rem;
+        color: #0f172a;
+        margin-bottom: 2px;
+        position: relative;
+        display: inline-block;
+    }
+    
+    /* OCR Bounding Boxes */
+    .ocr-box {
+        position: absolute;
+        border: 1.5px solid var(--accent);
+        background: rgba(16, 185, 129, 0.08);
+        box-shadow: 0 0 6px var(--accent);
+        border-radius: 3px;
+        z-index: 20;
+        pointer-events: none;
+        transition: var(--transition-fast);
+        opacity: 0;
+    }
+    
+    .ocr-box.active {
+        opacity: 1;
+        animation: textBlink 0.6s infinite alternate;
+    }
+    
+    .ocr-box.success {
+        opacity: 1;
+        border-color: var(--primary);
+        background: rgba(14, 165, 233, 0.05);
+        box-shadow: 0 0 6px var(--primary-glow);
+    }
+
+    .handwritten-sig {
+        font-family: 'Outfit', cursive, sans-serif;
+        font-size: 0.95rem;
+        font-weight: bold;
+        color: #2563eb;
+        transform: rotate(-10deg);
+        margin-top: 10px;
+        border-bottom: 1.5px solid #2563eb;
+        display: inline-block;
+        padding-bottom: 2px;
+    }
+
+    /* 20 Pills Grid Input Form */
+    .pills-input-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+        margin-bottom: 16px;
+    }
+    
+    .pill-group {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+    }
+    
+    .pill-label {
+        font-size: 0.72rem;
+        font-weight: bold;
+        color: var(--text-muted);
+    }
+    
+    .pill-input {
+        padding: 6px 8px;
+        font-size: 0.78rem;
+        font-family: monospace;
+        font-weight: bold;
+        text-align: center;
+    }
+    
+    .stats-card-box {
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid var(--surface-border);
+        border-radius: var(--border-radius-sm);
+        padding: 16px;
+        margin-bottom: 20px;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        align-items: center;
+    }
+    
+    .stat-mini-group {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .stat-mini-label {
+        font-size: 0.68rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        font-weight: 600;
+        letter-spacing: 0.3px;
+    }
+    
+    .stat-mini-val {
+        font-size: 1.15rem;
+        font-family: var(--font-heading);
+        font-weight: 700;
+        margin-top: 2px;
+    }
+
+    /* Premium Compact Layout Overrides to bring Actions completely above the fold */
+    .scan-left .glass-card {
+        padding: 20px 24px;
+    }
+    
+    #file-photo-loaded-view {
+        padding: 8px;
+    }
+    
+    .receipt-mockup-wrapper {
+        max-height: 175px !important;
+        padding: 12px;
+    }
+    
+    @keyframes pulseGlow {
+        0% {
+            box-shadow: 0 0 5px rgba(14, 165, 233, 0.4);
+            border-color: rgba(14, 165, 233, 0.6);
+        }
+        50% {
+            box-shadow: 0 0 20px rgba(14, 165, 233, 0.8), 0 0 30px rgba(14, 165, 233, 0.4);
+            border-color: #38bdf8;
+        }
+        100% {
+            box-shadow: 0 0 5px rgba(14, 165, 233, 0.4);
+            border-color: rgba(14, 165, 233, 0.6);
+        }
+    }
+
+    .btn-glow-pulse:not(:disabled) {
+        animation: pulseGlow 1.5s infinite;
+        border-color: #38bdf8 !important;
+        transform: translateY(-2px);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="scan-section">
+    <div class="container">
+        <!-- Main header -->
+        <div class="scan-header text-center">
+            <span class="badge">Bản Demo Tương Tác Cấp Cao</span>
+            <h1 class="scan-title">Hệ Thống Quét Tự Động Hóa Nhập Liệu</h1>
+            <p class="scan-subtitle">Hỗ trợ quét tệp Word tài liệu thông tin thuốc hoặc chụp quét ảnh phiếu cân phòng Lab để đồng bộ hóa lập tức sang Phiếu Kiểm Nghiệm.</p>
+        </div>
+
+        <div class="scan-grid">
+            <!-- Cột trái: Tải tài liệu & Trình giả lập quét -->
+            <div class="scan-column scan-left">
+                <div class="card glass-card">
+                    <!-- Scan mode switcher tabs -->
+                    <div class="scan-mode-tabs" style="display: flex; border-bottom: 1px solid var(--surface-border); margin-bottom: 20px; padding-bottom: 8px; gap: 8px;">
+                        <button class="db-menu-item active" id="btn-tab-word" style="padding: 10px 14px; font-weight: 600; flex: 1; justify-content: center; margin: 0;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="menu-icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                            <span>Quét File Word</span>
+                        </button>
+                        <button class="db-menu-item" id="btn-tab-photo" style="padding: 10px 14px; font-weight: 600; flex: 1; justify-content: center; margin: 0;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="menu-icon"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                            <span>Quét Phiếu Cân Lab</span>
+                        </button>
+                    </div>
+                    
+                    <!-- 1. WORD TEMPLATE SELECTOR VIEW (Shown in Word Tab Mode) -->
+                    <div id="word-templates-selection">
+                        <div class="quick-templates">
+                            <span class="quick-title">Chọn tài liệu mẫu nhanh:</span>
+                            <div class="template-buttons">
+                                <button class="btn-template" id="temp-para" data-target="paracetamol">
+                                    <svg class="doc-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                                    <span>Paracetamol 500mg</span>
+                                </button>
+                                <button class="btn-template" id="temp-amox" data-target="amoxicillin">
+                                    <svg class="doc-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                                    <span>Amoxicillin 250mg</span>
+                                </button>
+                                <button class="btn-template" id="temp-vac" data-target="vaccine">
+                                    <svg class="doc-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                                    <span>BioFlu Vaccine</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2. PHOTO SELECTOR INSTRUCTIONS (Shown in Photo Tab Mode) -->
+                    <div id="photo-templates-selection" class="hidden">
+                        <div class="quick-templates">
+                            <span class="quick-title">Chọn tệp ảnh mẫu nhanh (Chạy thử):</span>
+                            <div class="template-buttons">
+                                <button class="btn-template" id="temp-photo-lab" data-target="photo-lab">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="doc-icon"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                                    <span>Phiếu cân DDKL-03</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dropzone Container -->
+                    <div class="dropzone" id="document-dropzone" style="height: 240px; margin-bottom: 12px;">
+                        <input type="file" id="file-input" class="hidden-input" accept=".docx,.doc,.pdf,.txt,.jpg,.jpeg,.png">
+                        
+                        <!-- A. Dropzone Empty / Prompt state -->
+                        <div class="dropzone-content" id="dropzone-prompt">
+                            <div class="dropzone-icon-wrapper">
+                                <svg class="dropzone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                    <polyline points="17 8 12 3 7 8"></polyline>
+                                    <line x1="12" y1="3" x2="12" y2="15"></line>
+                                </svg>
+                            </div>
+                            <h5 id="dropzone-title-main">Kéo & Thả file Word ở đây</h5>
+                            <p id="dropzone-subtitle-main">Hoặc <span class="browse-link">chọn tệp từ máy tính</span></p>
+                            <span class="file-support-text" id="dropzone-support-main">Hỗ trợ các định dạng: .docx, .doc, .pdf</span>
+                        </div>
+
+                        <!-- B. File Loaded State (Word preview) -->
+                        <div class="file-loaded-state hidden" id="file-loaded-view">
+                            <div class="document-preview-paper" style="max-height: 270px; height: 270px;">
+                                <div class="paper-header">
+                                    <div class="paper-title-container">
+                                        <div class="doc-type-badge">WORD</div>
+                                        <h4 id="loaded-file-name">Ten_file_mau.docx</h4>
+                                    </div>
+                                    <button class="btn-remove-file" id="btn-reset-scan" title="Xóa file">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                                    </button>
+                                </div>
+                                <div class="paper-content-simulate">
+                                    <div class="sim-paragraph p-title" id="sim-content-title">PHIẾU THÔNG TIN THUỐC</div>
+                                    <div class="sim-paragraph p-bold" id="sim-content-subtitle">Tên thương mại: Paracetamol Extra</div>
+                                    <div class="sim-paragraph" id="sim-content-p1">Hoạt chất chính: Acetaminophen...</div>
+                                    <div class="sim-paragraph" id="sim-content-p2">Nhà sản xuất: Công ty Medipharco...</div>
+                                    <div class="sim-paragraph" id="sim-content-p3">Số ĐK: VD-21588-14. Số lô: LOT-PARA2026...</div>
+                                    <div class="sim-paragraph" id="sim-content-p4">Chỉ định: Giảm đau hạ sốt...</div>
+                                </div>
+                                <div class="scan-laser-line hidden" id="laser-line"></div>
+                            </div>
+                        </div>
+
+                        <!-- C. Photo Loaded State (HTML/CSS Simulated Balance Receipt) -->
+                        <div class="file-loaded-state hidden" id="file-photo-loaded-view">
+                            <!-- Reset file button for photo view -->
+                            <button class="btn-remove-file" id="btn-reset-photo" title="Xóa ảnh" style="position: absolute; top: 12px; right: 12px; z-index: 100;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px; height:12px;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                            </button>
+                            
+                            <div class="receipt-mockup-wrapper">
+                                <div class="receipt-paper" id="receipt-paper-ocr">
+                                    <div class="handwritten-header">
+                                        <span class="handwritten-text">DDKL - 03</span>
+                                        <span class="handwritten-text">2312</span>
+                                    </div>
+                                    
+                                    <div class="receipt-columns">
+                                        <!-- Cột Trái (Viên 1 - 10) -->
+                                        <div class="receipt-column">
+                                            <div class="receipt-block">
+                                                <span>11.04.2026 11:13</span><span>Type MS204S/A73</span><span>SNR B609149654</span>
+                                                <span>N <strong class="weight-val" id="src-w1">0.258(1) g</strong></span>
+                                                <!-- Absolute bounding box for OCR simulation -->
+                                                <div class="ocr-box" id="box-w1" style="width: 60px; height: 12px; bottom: 4px; left: 10px;"></div>
+                                            </div>
+                                            <div class="receipt-block">
+                                                <span>11.04.2026 11:13</span><span>Type MS204S/A73</span><span>SNR B609149654</span>
+                                                <span>N <strong class="weight-val" id="src-w2">0.255(7) g</strong></span>
+                                                <div class="ocr-box" id="box-w2" style="width: 60px; height: 12px; bottom: 4px; left: 10px;"></div>
+                                            </div>
+                                            <div class="receipt-block">
+                                                <span>11.04.2026 11:13</span><span>Type MS204S/A73</span><span>SNR B609149654</span>
+                                                <span>N <strong class="weight-val" id="src-w3">0.256(8) g</strong></span>
+                                                <div class="ocr-box" id="box-w3" style="width: 60px; height: 12px; bottom: 4px; left: 10px;"></div>
+                                            </div>
+                                            <div class="receipt-block">
+                                                <span>11.04.2026 11:14</span><span>Type MS204S/A73</span><span>SNR B609149654</span>
+                                                <span>N <strong class="weight-val" id="src-w4">0.254(3) g</strong></span>
+                                                <div class="ocr-box" id="box-w4" style="width: 60px; height: 12px; bottom: 4px; left: 10px;"></div>
+                                            </div>
+                                            <div class="receipt-block">
+                                                <span>11.04.2026 11:14</span><span>Type MS204S/A73</span><span>SNR B609149654</span>
+                                                <span>N <strong class="weight-val" id="src-w5">0.252(6) g</strong></span>
+                                                <div class="ocr-box" id="box-w5" style="width: 60px; height: 12px; bottom: 4px; left: 10px;"></div>
+                                            </div>
+                                            <div class="receipt-block">
+                                                <span>11.04.2026 11:15</span><span>Type MS204S/A73</span><span>SNR B609149654</span>
+                                                <span>N <strong class="weight-val" id="src-w6">0.256(8) g</strong></span>
+                                                <div class="ocr-box" id="box-w6" style="width: 60px; height: 12px; bottom: 4px; left: 10px;"></div>
+                                            </div>
+                                            <div class="receipt-block">
+                                                <span>11.04.2026 11:15</span><span>Type MS204S/A73</span><span>SNR B609149654</span>
+                                                <span>N <strong class="weight-val" id="src-w7">0.260(1) g</strong></span>
+                                                <div class="ocr-box" id="box-w7" style="width: 60px; height: 12px; bottom: 4px; left: 10px;"></div>
+                                            </div>
+                                            <div class="receipt-block">
+                                                <span>11.04.2026 11:15</span><span>Type MS204S/A73</span><span>SNR B609149654</span>
+                                                <span>N <strong class="weight-val" id="src-w8">0.258(8) g</strong></span>
+                                                <div class="ocr-box" id="box-w8" style="width: 60px; height: 12px; bottom: 4px; left: 10px;"></div>
+                                            </div>
+                                            <div class="receipt-block">
+                                                <span>11.04.2026 11:15</span><span>Type MS204S/A73</span><span>SNR B609149654</span>
+                                                <span>N <strong class="weight-val" id="src-w9">0.255(4) g</strong></span>
+                                                <div class="ocr-box" id="box-w9" style="width: 60px; height: 12px; bottom: 4px; left: 10px;"></div>
+                                            </div>
+                                            <div class="receipt-block" style="border: none;">
+                                                <span>11.04.2026 11:15</span><span>Type MS204S/A73</span><span>SNR B609149654</span>
+                                                <span>N <strong class="weight-val" id="src-w10">0.257(6) g</strong></span>
+                                                <div class="ocr-box" id="box-w10" style="width: 60px; height: 12px; bottom: 4px; left: 10px;"></div>
+                                            </div>
+                                            <div class="handwritten-sig" style="margin-left: 10px;">Huy QC</div>
+                                        </div>
+                                        
+                                        <!-- Cột Phải (Viên 11 - 20) -->
+                                        <div class="receipt-column">
+                                            <div class="receipt-block">
+                                                <span>11.04.2026 11:15</span><span>Type MS204S/A73</span><span>SNR B609149654</span>
+                                                <span>N <strong class="weight-val" id="src-w11">0.259(3) g</strong></span>
+                                                <div class="ocr-box" id="box-w11" style="width: 60px; height: 12px; bottom: 4px; left: 10px;"></div>
+                                            </div>
+                                            <div class="receipt-block">
+                                                <span>11.04.2026 11:16</span><span>Type MS204S/A73</span><span>SNR B609149654</span>
+                                                <span>N <strong class="weight-val" id="src-w12">0.253(8) g</strong></span>
+                                                <div class="ocr-box" id="box-w12" style="width: 60px; height: 12px; bottom: 4px; left: 10px;"></div>
+                                            </div>
+                                            <div class="receipt-block">
+                                                <span>11.04.2026 11:16</span><span>Type MS204S/A73</span><span>SNR B609149654</span>
+                                                <span>N <strong class="weight-val" id="src-w13">0.258(4) g</strong></span>
+                                                <div class="ocr-box" id="box-w13" style="width: 60px; height: 12px; bottom: 4px; left: 10px;"></div>
+                                            </div>
+                                            <div class="receipt-block">
+                                                <span>11.04.2026 11:16</span><span>Type MS204S/A73</span><span>SNR B609149654</span>
+                                                <span>N <strong class="weight-val" id="src-w14">0.256(4) g</strong></span>
+                                                <div class="ocr-box" id="box-w14" style="width: 60px; height: 12px; bottom: 4px; left: 10px;"></div>
+                                            </div>
+                                            <div class="receipt-block">
+                                                <span>11.04.2026 11:16</span><span>Type MS204S/A73</span><span>SNR B609149654</span>
+                                                <span>N <strong class="weight-val" id="src-w15">0.255(4) g</strong></span>
+                                                <div class="ocr-box" id="box-w15" style="width: 60px; height: 12px; bottom: 4px; left: 10px;"></div>
+                                            </div>
+                                            <div class="receipt-block">
+                                                <span>11.04.2026 11:17</span><span>Type MS204S/A73</span><span>SNR B609149654</span>
+                                                <span>N <strong class="weight-val" id="src-w16">0.255(5) g</strong></span>
+                                                <div class="ocr-box" id="box-w16" style="width: 60px; height: 12px; bottom: 4px; left: 10px;"></div>
+                                            </div>
+                                            <div class="receipt-block">
+                                                <span>11.04.2026 11:17</span><span>Type MS204S/A73</span><span>SNR B609149654</span>
+                                                <span>N <strong class="weight-val" id="src-w17">0.253(2) g</strong></span>
+                                                <div class="ocr-box" id="box-w17" style="width: 60px; height: 12px; bottom: 4px; left: 10px;"></div>
+                                            </div>
+                                            <div class="receipt-block">
+                                                <span>11.04.2026 11:17</span><span>Type MS204S/A73</span><span>SNR B609149654</span>
+                                                <span>N <strong class="weight-val" id="src-w18">0.258(8) g</strong></span>
+                                                <div class="ocr-box" id="box-w18" style="width: 60px; height: 12px; bottom: 4px; left: 10px;"></div>
+                                            </div>
+                                            <div class="receipt-block">
+                                                <span>11.04.2026 11:17</span><span>Type MS204S/A73</span><span>SNR B609149654</span>
+                                                <span>N <strong class="weight-val" id="src-w19">0.256(7) g</strong></span>
+                                                <div class="ocr-box" id="box-w19" style="width: 60px; height: 12px; bottom: 4px; left: 10px;"></div>
+                                            </div>
+                                            <div class="receipt-block" style="border: none;">
+                                                <span>11.04.2026 11:17</span><span>Type MS204S/A73</span><span>SNR B609149654</span>
+                                                <span>N <strong class="weight-val" id="src-w20">0.255(3) g</strong></span>
+                                                <div class="ocr-box" id="box-w20" style="width: 60px; height: 12px; bottom: 4px; left: 10px;"></div>
+                                            </div>
+                                            <div class="handwritten-sig" style="margin-left: 10px;">Huy QA</div>
+                                        </div>
+                                    </div>
+                                    <!-- Photo laser scan line -->
+                                    <div class="scan-laser-line hidden" id="photo-laser-line" style="background: linear-gradient(90deg, transparent, var(--accent), transparent); box-shadow: 0 0 14px 4px var(--accent);"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Scan Trigger Actions & Progress Bar (Giai đoạn 3 UX Fix) -->
+                    <div class="scan-actions">
+                        <button class="btn btn-primary w-full btn-large" id="btn-start-process" disabled>
+                            <svg class="action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                            <span id="btn-start-text">Bắt đầu Quét & Tự động điền</span>
+                        </button>
+                        
+                        <!-- OCR Scan Progress Bar -->
+                        <div class="ocr-progress-container hidden" id="ocr-progress-box" style="margin-top: 16px; background: rgba(255,255,255,0.03); border: 1px solid var(--surface-border); padding: 12px; border-radius: 8px;">
+                            <div style="display: flex; justify-content: space-between; font-size: 0.76rem; font-weight: 600; margin-bottom: 6px;">
+                                <span style="color: var(--primary);" id="ocr-progress-label">Đang phân tích cấu trúc phiếu lab...</span>
+                                <span style="color: var(--accent);" id="ocr-progress-percent">0%</span>
+                            </div>
+                            <div class="dl-progress-bar" style="height: 6px;"><div class="fill" id="ocr-progress-fill" style="width: 0%; background-color: var(--accent); box-shadow: 0 0 8px var(--accent);"></div></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Live Log Console Output -->
+                <div class="card glass-card console-card">
+                    <div class="console-header">
+                        <div class="console-status-dot"></div>
+                        <span>Nhật ký Xử lý Hệ thống (Console Log)</span>
+                    </div>
+                    <div class="console-body" id="console-logs">
+                        <div class="log-line log-system">System ready. Waiting for document upload...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cột phải: HTML Form Đích được điền tự động -->
+            <div class="scan-column scan-right">
+                
+                <!-- A. PANEL 1: DRUG INFO FORM (Shown in Word Tab Mode) -->
+                <div id="panel-word-form">
+                    <div class="card glass-card form-destination-card">
+                        <div class="card-header-accent form-header-accent">
+                            <h4>2. Biểu mẫu HTML Dược phẩm (Kết quả trích xuất)</h4>
+                            <span class="status-badge" id="form-status-badge">Đang chờ quét...</span>
+                        </div>
+                        
+                        <form id="pharmaceutical-form" class="medical-form" onsubmit="event.preventDefault();">
+                            <div class="form-grid-2">
+                                <div class="form-group">
+                                    <label for="trade_name" class="form-label">Tên Thương Mại <span class="required">*</span></label>
+                                    <div class="input-wrapper">
+                                        <input type="text" id="trade_name" class="form-input" placeholder="Chưa có dữ liệu" readonly>
+                                        <span class="extraction-indicator" id="ind-trade_name"></span>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="active_ingredient" class="form-label">Hoạt Chất Chính <span class="required">*</span></label>
+                                    <div class="input-wrapper">
+                                        <input type="text" id="active_ingredient" class="form-input" placeholder="Chưa có dữ liệu" readonly>
+                                        <span class="extraction-indicator" id="ind-active_ingredient"></span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-grid-2">
+                                <div class="form-group">
+                                    <label for="strength" class="form-label">Hàm Lượng / Nồng Độ</label>
+                                    <div class="input-wrapper">
+                                        <input type="text" id="strength" class="form-input" placeholder="Chưa có dữ liệu" readonly>
+                                        <span class="extraction-indicator" id="ind-strength"></span>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="dosage_form" class="form-label">Dạng Bào Chế</label>
+                                    <div class="input-wrapper">
+                                        <input type="text" id="dosage_form" class="form-input" placeholder="Chưa có dữ liệu" readonly>
+                                        <span class="extraction-indicator" id="ind-dosage_form"></span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="manufacturer" class="form-label">Nhà Sản Xuất <span class="required">*</span></label>
+                                <div class="input-wrapper">
+                                    <input type="text" id="manufacturer" class="form-input" placeholder="Chưa có dữ liệu" readonly>
+                                    <span class="extraction-indicator" id="ind-manufacturer"></span>
+                                </div>
+                            </div>
+
+                            <div class="form-grid-2">
+                                <div class="form-group">
+                                    <label for="batch_number" class="form-label">Số Lô Sản Xuất <span class="required">*</span></label>
+                                    <div class="input-wrapper">
+                                        <input type="text" id="batch_number" class="form-input" placeholder="Chưa có dữ liệu" readonly>
+                                        <span class="extraction-indicator" id="ind-batch_number"></span>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="registration_number" class="form-label">Số Đăng Ký Lưu Hành</label>
+                                    <div class="input-wrapper">
+                                        <input type="text" id="registration_number" class="form-input" placeholder="Chưa có dữ liệu" readonly>
+                                        <span class="extraction-indicator" id="ind-registration_number"></span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-grid-2">
+                                <div class="form-group">
+                                    <label for="mfg_date" class="form-label">Ngày Sản Xuất</label>
+                                    <div class="input-wrapper">
+                                        <input type="text" id="mfg_date" class="form-input" placeholder="Chưa có dữ liệu" readonly>
+                                        <span class="extraction-indicator" id="ind-mfg_date"></span>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="exp_date" class="form-label">Hạn Sử Dụng <span class="required">*</span></label>
+                                    <div class="input-wrapper">
+                                        <input type="text" id="exp_date" class="form-input" placeholder="Chưa có dữ liệu" readonly>
+                                        <span class="extraction-indicator" id="ind-exp_date"></span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="indications" class="form-label">Chỉ Định Điều Trị / Công Dụng</label>
+                                <div class="input-wrapper">
+                                    <textarea id="indications" class="form-input form-textarea" placeholder="Chưa có dữ liệu" readonly></textarea>
+                                    <span class="extraction-indicator" id="ind-indications"></span>
+                                </div>
+                            </div>
+
+                            <!-- Actions -->
+                            <div class="form-submit-actions">
+                                <button type="button" class="btn btn-secondary flex-1" id="btn-form-clear" disabled>
+                                    <span>Làm Mới</span>
+                                </button>
+                                <button type="button" class="btn btn-primary flex-2" id="btn-form-submit" disabled>
+                                    <span>Lưu Vào Cơ Sở Dữ Liệu</span>
+                                    <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
+                <!-- B. PANEL 2: WEIGHT UNIFORMITY 20 PILLS FORM (Shown in Photo Tab Mode) -->
+                <div id="panel-photo-form" class="hidden">
+                    <div class="card glass-card form-destination-card" id="uniformity-card-glow">
+                        <div class="card-header-accent form-header-accent">
+                            <h4>2. Kiểm nghiệm Độ đồng đều khối lượng Dược điển (20 viên)</h4>
+                            <span class="status-badge" id="photo-status-badge">Đang chờ quét...</span>
+                        </div>
+                        
+                        <form id="weight-uniformity-form" class="medical-form" onsubmit="event.preventDefault();">
+                            <!-- 20 pills weights input matrix -->
+                            <div class="pills-input-grid">
+                                <!-- Pills 1 to 20 -->
+                                <div class="pill-group"><span class="pill-label">V1</span><input type="text" id="w1" class="form-input pill-input" readonly placeholder="-"><span class="extraction-indicator" id="ind-w1" style="right: auto; left: 4px; bottom: 4px; width:6px; height:6px;"></span></div>
+                                <div class="pill-group"><span class="pill-label">V2</span><input type="text" id="w2" class="form-input pill-input" readonly placeholder="-"><span class="extraction-indicator" id="ind-w2" style="right: auto; left: 4px; bottom: 4px; width:6px; height:6px;"></span></div>
+                                <div class="pill-group"><span class="pill-label">V3</span><input type="text" id="w3" class="form-input pill-input" readonly placeholder="-"><span class="extraction-indicator" id="ind-w3" style="right: auto; left: 4px; bottom: 4px; width:6px; height:6px;"></span></div>
+                                <div class="pill-group"><span class="pill-label">V4</span><input type="text" id="w4" class="form-input pill-input" readonly placeholder="-"><span class="extraction-indicator" id="ind-w4" style="right: auto; left: 4px; bottom: 4px; width:6px; height:6px;"></span></div>
+                                <div class="pill-group"><span class="pill-label">V5</span><input type="text" id="w5" class="form-input pill-input" readonly placeholder="-"><span class="extraction-indicator" id="ind-w5" style="right: auto; left: 4px; bottom: 4px; width:6px; height:6px;"></span></div>
+                                <div class="pill-group"><span class="pill-label">V6</span><input type="text" id="w6" class="form-input pill-input" readonly placeholder="-"><span class="extraction-indicator" id="ind-w6" style="right: auto; left: 4px; bottom: 4px; width:6px; height:6px;"></span></div>
+                                <div class="pill-group"><span class="pill-label">V7</span><input type="text" id="w7" class="form-input pill-input" readonly placeholder="-"><span class="extraction-indicator" id="ind-w7" style="right: auto; left: 4px; bottom: 4px; width:6px; height:6px;"></span></div>
+                                <div class="pill-group"><span class="pill-label">V8</span><input type="text" id="w8" class="form-input pill-input" readonly placeholder="-"><span class="extraction-indicator" id="ind-w8" style="right: auto; left: 4px; bottom: 4px; width:6px; height:6px;"></span></div>
+                                <div class="pill-group"><span class="pill-label">V9</span><input type="text" id="w9" class="form-input pill-input" readonly placeholder="-"><span class="extraction-indicator" id="ind-w9" style="right: auto; left: 4px; bottom: 4px; width:6px; height:6px;"></span></div>
+                                <div class="pill-group"><span class="pill-label">V10</span><input type="text" id="w10" class="form-input pill-input" readonly placeholder="-"><span class="extraction-indicator" id="ind-w10" style="right: auto; left: 4px; bottom: 4px; width:6px; height:6px;"></span></div>
+                                
+                                <div class="pill-group"><span class="pill-label">V11</span><input type="text" id="w11" class="form-input pill-input" readonly placeholder="-"><span class="extraction-indicator" id="ind-w11" style="right: auto; left: 4px; bottom: 4px; width:6px; height:6px;"></span></div>
+                                <div class="pill-group"><span class="pill-label">V12</span><input type="text" id="w12" class="form-input pill-input" readonly placeholder="-"><span class="extraction-indicator" id="ind-w12" style="right: auto; left: 4px; bottom: 4px; width:6px; height:6px;"></span></div>
+                                <div class="pill-group"><span class="pill-label">V13</span><input type="text" id="w13" class="form-input pill-input" readonly placeholder="-"><span class="extraction-indicator" id="ind-w13" style="right: auto; left: 4px; bottom: 4px; width:6px; height:6px;"></span></div>
+                                <div class="pill-group"><span class="pill-label">V14</span><input type="text" id="w14" class="form-input pill-input" readonly placeholder="-"><span class="extraction-indicator" id="ind-w14" style="right: auto; left: 4px; bottom: 4px; width:6px; height:6px;"></span></div>
+                                <div class="pill-group"><span class="pill-label">V15</span><input type="text" id="w15" class="form-input pill-input" readonly placeholder="-"><span class="extraction-indicator" id="ind-w15" style="right: auto; left: 4px; bottom: 4px; width:6px; height:6px;"></span></div>
+                                <div class="pill-group"><span class="pill-label">V16</span><input type="text" id="w16" class="form-input pill-input" readonly placeholder="-"><span class="extraction-indicator" id="ind-w16" style="right: auto; left: 4px; bottom: 4px; width:6px; height:6px;"></span></div>
+                                <div class="pill-group"><span class="pill-label">V17</span><input type="text" id="w17" class="form-input pill-input" readonly placeholder="-"><span class="extraction-indicator" id="ind-w17" style="right: auto; left: 4px; bottom: 4px; width:6px; height:6px;"></span></div>
+                                <div class="pill-group"><span class="pill-label">V18</span><input type="text" id="w18" class="form-input pill-input" readonly placeholder="-"><span class="extraction-indicator" id="ind-w18" style="right: auto; left: 4px; bottom: 4px; width:6px; height:6px;"></span></div>
+                                <div class="pill-group"><span class="pill-label">V19</span><input type="text" id="w19" class="form-input pill-input" readonly placeholder="-"><span class="extraction-indicator" id="ind-w19" style="right: auto; left: 4px; bottom: 4px; width:6px; height:6px;"></span></div>
+                                <div class="pill-group"><span class="pill-label">V20</span><input type="text" id="w20" class="form-input pill-input" readonly placeholder="-"><span class="extraction-indicator" id="ind-w20" style="right: auto; left: 4px; bottom: 4px; width:6px; height:6px;"></span></div>
+                            </div>
+                            
+                            <!-- Calculations Box Statistics -->
+                            <div class="stats-card-box">
+                                <div class="stat-mini-group">
+                                    <span class="stat-mini-label">Trung Bình (Mean)</span>
+                                    <span class="stat-mini-val" id="val-mean" style="color: var(--primary);">--</span>
+                                </div>
+                                <div class="stat-mini-group" style="border-left: 1px solid var(--surface-border); border-right: 1px solid var(--surface-border); padding: 0 10px;">
+                                    <span class="stat-mini-label">Độ lệch (RSD%)</span>
+                                    <span class="stat-mini-val" id="val-rsd" style="color: #8b5cf6;">--</span>
+                                </div>
+                                <div class="stat-mini-group">
+                                    <span class="stat-mini-label">Kết Luận Dược Điển</span>
+                                    <span class="stat-mini-val" id="val-result" style="font-size: 0.9rem; text-transform: uppercase;">Chờ dữ liệu</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Sync action trigger -->
+                            <div class="form-submit-actions">
+                                <button type="button" class="btn btn-secondary flex-1" id="btn-photo-clear" disabled>Làm Mới</button>
+                                <button type="button" class="btn btn-primary flex-2" id="btn-sync-coa" disabled style="background: linear-gradient(135deg, var(--success) 0%, #059669 100%); box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px; height:16px;"><path d="M17 3a2.82 2.82 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path><path d="m15 5 4 4"></path></svg>
+                                    <span>Đồng bộ sang Phiếu COA</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Success Popup Modal (simulated after form submit) -->
+<div class="modal-overlay hidden" id="success-modal">
+    <div class="modal-card">
+        <div class="modal-success-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+        </div>
+        <h3>Lưu Dữ Liệu Thành Công!</h3>
+        <p>Thông tin dược phẩm đã được trích xuất từ tài liệu Word và lưu trữ thành công vào cơ sở dữ liệu y tế chuẩn cấu trúc HTML/JSON.</p>
+        <div class="modal-actions">
+            <button class="btn btn-primary" id="btn-modal-close">Hoàn Thành & Đóng</button>
+        </div>
+    </div>
+</div>
+{% endblock %}

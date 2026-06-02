@@ -1,0 +1,78 @@
+{% extends 'coreapp/base.html' %}
+{% load static %}
+
+{% block title %}Đăng Ký Tài Khoản | PharmaScan{% endblock %}
+
+{% block content %}
+<section class="auth-section">
+    <div class="container auth-flex-container">
+        <div class="auth-card glass-card fade-in">
+            <div class="auth-header text-center">
+                <a href="{% url 'home' %}" class="logo auth-logo-center">
+                    <svg class="logo-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="3" y="10" width="18" height="8" rx="4" transform="rotate(-45 3 10)" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/>
+                        <path d="M9.5 9.5L14.5 14.5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+                        <circle cx="17.5" cy="6.5" r="2" fill="currentColor"/>
+                    </svg>
+                    <span class="logo-text">Pharma<span class="highlight">Scan</span></span>
+                </a>
+                <h2 class="auth-title">Đăng ký thành viên</h2>
+                <p class="auth-subtitle">Tạo tài khoản để quản trị và tự động hóa form y khoa</p>
+            </div>
+
+            <form id="register-form" class="auth-form" onsubmit="event.preventDefault(); window.location.href='{% url 'login' %}';">
+                <div class="form-group">
+                    <label for="reg-name" class="form-label">Họ và Tên <span class="required">*</span></label>
+                    <div class="input-wrapper">
+                        <input type="text" id="reg-name" class="form-input" placeholder="Ví dụ: Nguyễn Văn A" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="reg-email" class="form-label">Địa chỉ Email <span class="required">*</span></label>
+                    <div class="input-wrapper">
+                        <input type="email" id="reg-email" class="form-input" placeholder="ten@pharmascan.com" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="reg-role" class="form-label">Vai Trò Hệ Thống <span class="required">*</span></label>
+                    <div class="input-wrapper">
+                        <select id="reg-role" class="form-input" style="appearance: none; background: rgba(0, 0, 0, 0.2); cursor: pointer;" required>
+                            <option value="operator" style="background-color: var(--surface-dark-solid)">Nhân viên nhập liệu (Operator)</option>
+                            <option value="pharmacist" style="background-color: var(--surface-dark-solid)">Dược sĩ kiểm duyệt (Pharmacist Admin)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="reg-password" class="form-label">Mật Khẩu <span class="required">*</span></label>
+                    <div class="input-wrapper">
+                        <input type="password" id="reg-password" class="form-input" placeholder="Tối thiểu 8 ký tự" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="reg-confirm-password" class="form-label">Xác Nhận Mật Khẩu <span class="required">*</span></label>
+                    <div class="input-wrapper">
+                        <input type="password" id="reg-confirm-password" class="form-input" placeholder="Nhập lại mật khẩu" required>
+                    </div>
+                </div>
+
+                <div class="form-checkbox-group">
+                    <input type="checkbox" id="terms-agree" class="form-checkbox" required>
+                    <label for="terms-agree" class="checkbox-label">Tôi đồng ý với các <a href="#" class="auth-link">Điều khoản dịch vụ</a> và <a href="#" class="auth-link">Chính sách bảo mật</a> y tế.</label>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-full btn-large" id="btn-register-submit">
+                    <span>Đăng Ký Tài Khoản</span>
+                </button>
+            </form>
+
+            <div class="auth-footer text-center">
+                <p>Đã có tài khoản? <a href="{% url 'login' %}" class="auth-link">Đăng nhập tại đây</a></p>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
