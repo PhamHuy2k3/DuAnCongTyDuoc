@@ -4,72 +4,123 @@
 {% block title %}Đăng Nhập Hệ Thống | PharmaScan{% endblock %}
 
 {% block content %}
+<style>
+/* 1. Cấu hình cho toàn bộ khối chữ logo */
+.auth-logo-center .logo-text {
+    display: inline-block;
+    transition: letter-spacing 0.3s ease-in-out !important;
+}
+
+/* 2. Cấu hình riêng cho thẻ span chứa chữ 'inter' */
+.auth-logo-center .logo-text > span {
+    display: inline-block !important;
+    transition: transform 0.3s ease-in-out !important;
+}
+
+/* ===================================================
+   KHI HOVER: ĐẨY DRP SANG TRÁI, ĐẨY INTER SANG PHẢI
+   =================================================== */
+
+.auth-logo-center:hover .logo-text {
+    /* Đẩy toàn bộ các ký tự (bao gồm DRP) giãn cách nhau ra, DRP tự động lùi sang trái */
+    letter-spacing: 10px !important; 
+}
+
+.auth-logo-center:hover .logo-text > span {
+    /* Chữ inter bị dính hiệu ứng letter-spacing của cha sẽ bị thưa chữ, 
+       ta dùng transform để đẩy mạnh nó sang phải và kéo khít chữ 'inter' lại như cũ */
+    letter-spacing: normal !important;
+    transform: translateX(15px) !important; 
+}
+/* Tinh chỉnh Input và Nút mắt */
+.input-wrapper { position: relative; display: flex; align-items: center; }
+
+.toggle-password-btn {
+    position: absolute; right: 12px;
+    background: transparent !important;
+    border: none !important;
+    cursor: pointer;
+    color: #94a3b8;
+    padding: 5px;
+    transition: 0.3s;
+}
+
+.toggle-password-btn:hover { color: #3b82f6; }
+
+.alert-error {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+    padding: 10px;
+    border-radius: 6px;
+    margin-bottom: 15px;
+    font-size: 14px;
+}   
+</style>
 <section class="auth-section">
     <div class="container auth-flex-container">
         <div class="auth-card glass-card fade-in">
             <div class="auth-header text-center">
                 <a href="{% url 'home' %}" class="logo auth-logo-center">
-                    <svg class="logo-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <rect x="3" y="10" width="18" height="8" rx="4" transform="rotate(-45 3 10)" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/>
-                        <path d="M9.5 9.5L14.5 14.5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
-                        <circle cx="17.5" cy="6.5" r="2" fill="currentColor"/>
-                    </svg>
-                    <span class="logo-text">Pharma<span class="highlight">Scan</span></span>
+                    <span class="logo-text">DRP<span >inter</span></span>
                 </a>
                 <h2 class="auth-title">Chào mừng trở lại!</h2>
-                <p class="auth-subtitle">Nhập tài khoản của bạn để truy cập hệ thống quét</p>
+                <p class="auth-subtitle">Nhập tài khoản của bạn để truy cập hệ thống</p>
             </div>
 
-            <!-- Demo Quick Accounts Selector -->
-            <div class="demo-accounts-box">
-                <span class="demo-box-title">Đăng nhập nhanh (Chạy thử Demo):</span>
-                <div class="demo-buttons">
-                    <button type="button" class="btn-demo-acc" id="btn-demo-operator" data-email="operator@pharmascan.com" data-redirect="{% url 'scan_demo' %}">
-                        <span class="acc-badge operator">Operator</span>
-                        <span class="acc-desc">Nhân viên quét tệp</span>
-                    </button>
-                    <button type="button" class="btn-demo-acc" id="btn-demo-admin" data-email="admin@pharmascan.com" data-redirect="{% url 'dashboard' %}">
-                        <span class="acc-badge admin">Admin</span>
-                        <span class="acc-desc">Quản trị duyệt thuốc</span>
-                    </button>
-                </div>
-            </div>
+            <!-- 1. Sửa thuộc tính form: Đổi thành POST, xóa preventDefault -->
+<form id="login-form" class="auth-form" method="POST">
+    {% csrf_token %} 
 
-            <form id="login-form" class="auth-form" onsubmit="event.preventDefault();">
-                <div class="form-group">
-                    <label for="login-email" class="form-label">Địa chỉ Email <span class="required">*</span></label>
-                    <div class="input-wrapper">
-                        <input type="email" id="login-email" class="form-input" placeholder="ten@pharmascan.com" required>
-                    </div>
-                </div>
+    {% if error_message %}
+        <div class="alert-error">{{ error_message }}</div>
+    {% endif %}
 
-                <div class="form-group">
-                    <div class="label-flex">
-                        <label for="login-password" class="form-label">Mật Khẩu <span class="required">*</span></label>
-                        <a href="#" class="forgot-link">Quên mật khẩu?</a>
-                    </div>
-                    <div class="input-wrapper">
-                        <input type="password" id="login-password" class="form-input" placeholder="••••••••" required>
-                    </div>
-                </div>
+    <div class="form-group">
+        <label for="login-email" class="form-label">Địa chỉ Email <span class="required">*</span></label>
+        <div class="input-wrapper">
+            <input type="email" id="login-email" name="username" class="form-input" placeholder="ten@pharmascan.com" required>
+        </div>
+    </div>
 
-                <div class="form-checkbox-group">
-                    <input type="checkbox" id="remember-me" class="form-checkbox">
-                    <label for="remember-me" class="checkbox-label">Ghi nhớ đăng nhập trên thiết bị này</label>
-                </div>
+    <div class="form-group">
+        <div class="label-flex">
+            <label for="login-password" class="form-label">Mật Khẩu <span class="required">*</span></label> 
+        </div>
+        <div class="input-wrapper">
+            <input type="password" id="login-password" name="password" class="form-input" placeholder="••••••••" required>
+            <button type="button" id="toggle-password" class="toggle-password-btn">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+            </button>
+        </div>
+    </div>
 
-                <button type="submit" class="btn btn-primary w-full btn-large" id="btn-login-submit">
-                    <span>Đăng Nhập</span>
-                    <svg class="btn-arrow" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M5 12H19M19 12L12 5M19 12L12 19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                </button>
-            </form>
+    <div class="form-checkbox-group">
+        <input type="checkbox" id="remember-me" name="remember_me" class="form-checkbox">
+        <label for="remember-me" class="checkbox-label">Ghi nhớ đăng nhập</label>
+    </div>
 
-            <div class="auth-footer text-center">
-                <p>Chưa có tài khoản? <a href="{% url 'register' %}" class="auth-link">Đăng ký ngay tại đây</a></p>
-            </div>
+    <button type="submit" class="btn btn-primary w-full btn-large">
+        <span>Đăng Nhập</span>
+    </button>
+</form>
         </div>
     </div>
 </section>
+<script>
+    const toggleBtn = document.getElementById('toggle-password');
+    const passwordInput = document.getElementById('login-password');
+
+    toggleBtn.addEventListener('click', function() {
+        if (passwordInput.type === 'password') {
+            passwordInput.type = 'text';
+            toggleBtn.style.color = '#3b82f6'; // Đổi màu khi hiện mật khẩu
+        } else {
+            passwordInput.type = 'password';
+            toggleBtn.style.color = '#94a3b8'; // Trả về màu cũ
+        }
+    });
+</script>
 {% endblock %}

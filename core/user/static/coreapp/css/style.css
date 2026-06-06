@@ -230,6 +230,16 @@ button, input, textarea {
     transition: var(--transition-smooth);
 }
 
+.logo:hover .logo-icon {
+    transform: rotate(45deg);
+    color: var(--accent);
+}
+
+.logo-text .highlight {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
 
 .nav-menu {
     display: flex;
@@ -2531,7 +2541,7 @@ button, input, textarea {
     .logo-text, .db-role-badge, .db-menu-item span, .pending-count-bubble, .user-info, .btn-logout span {
         display: none !important;
     }
-
+    
     .db-sidebar-menu {
         padding: 20px 8px;
     }

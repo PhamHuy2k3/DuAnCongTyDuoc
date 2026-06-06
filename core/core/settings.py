@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'coreapp',
+    'user',
 ]
 
 MIDDLEWARE = [
@@ -63,6 +64,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'django.template.context_processors.csrf',
             ],
         },
     },
@@ -122,3 +124,16 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+AUTH_USER_MODEL = 'coreapp.CustomUser'
+
+# Cho phép session tồn tại ngay cả khi đóng trình duyệt
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False 
+
+# Lưu session vào cơ sở dữ liệu để bền vững hơn
+SESSION_ENGINE = 'django.contrib.sessions.backends.db'
+
+# Thời gian lưu (ví dụ: 14 ngày - tính bằng giây)
+SESSION_COOKIE_AGE = 1209600 
+
+# Lưu lại cookie sau mỗi request để không bị hết hạn sớm
+SESSION_SAVE_EVERY_REQUEST = True

@@ -1,0 +1,375 @@
+    /* Custom style override to hide base navbar/footer on Dashboard for cleaner space */
+    .header, .footer {
+        display: none !important;
+    }
+    body {
+        padding-top: 0 !important;
+        background-color: var(--bg-dark);
+    }
+    .main-content {
+        min-height: 100vh;
+        display: flex;
+    }
+    /* Logo animation effect */
+    .auth-logo-center .logo-text {
+        display: inline-block;
+        transition: letter-spacing 0.3s ease-in-out !important;
+    }
+    .auth-logo-center .logo-text > span {
+        display: inline-block !important;
+        transition: transform 0.3s ease-in-out !important;
+    }
+    .auth-logo-center:hover .logo-text {
+        letter-spacing: 10px !important; 
+    }
+    .auth-logo-center:hover .logo-text > span {
+        letter-spacing: normal !important;
+        transform: translateX(15px) !important; 
+    }
+
+    /* Hệ thống CSS quản lý tài khoản */
+    .hidden { display: none !important; }
+    
+    .badge {
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    .badge-success { background-color: rgba(16, 185, 129, 0.2); color: #10b981; }
+    .badge-danger { background-color: rgba(239, 68, 68, 0.2); color: #ef4444; }
+    
+    .btn-group-action { display: flex; gap: 6px; justify-content: flex-end; }
+    
+    .btn-sm {
+        padding: 6px 10px;
+        font-size: 0.8rem;
+        border-radius: 4px;
+        cursor: pointer;
+        border: none;
+        color: #fff;
+        transition: background 0.2s;
+    }
+    .btn-lock { background-color: rgba(245, 158, 11, 0.2); color: #f59e0b; }
+    .btn-lock:hover { background-color: rgba(245, 158, 11, 0.3); }
+    .btn-unlock { background-color: rgba(16, 185, 129, 0.2); color: #10b981; }
+    .btn-unlock:hover { background-color: rgba(16, 185, 129, 0.3); }
+    .btn-reset { background-color: rgba(59, 130, 246, 0.2); color: #3b82f6; }
+    .btn-reset:hover { background-color: rgba(59, 130, 246, 0.3); }
+    .btn-primary-custom { background: #3b82f6; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; color: white;}
+
+    /* Form cấp phát tài khoản nhanh */
+    .quick-create-form {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)) auto;
+        gap: 12px;
+        align-items: flex-end;
+        margin-bottom: 24px;
+        padding: 16px;
+        background: rgba(255, 255, 255, 0.02);
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group label { font-size: 0.8rem; color: #94a3b8; }
+    .form-group input, .form-group select {
+        padding: 8px 12px;
+        background: rgba(0, 0, 0, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 4px;
+        color: #fff;
+    }
+    .form-group input:focus, .form-group select:focus { border-color: #3b82f6; outline: none; }
+
+    /* CSS Cho Table */
+    .db-table { width: 100%; border-collapse: collapse; text-align: left; }
+    .db-table th { padding: 12px; color: #94a3b8; border-bottom: 1px solid rgba(255,255,255,0.1); font-weight: 500; }
+    .db-table td { padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); color: #e2e8f0; }
+    
+    /* Pop-up modal */
+    .modal-overlay {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0, 0, 0, 0.6); display: flex; align-items: center;
+        justify-content: center; z-index: 999;
+    }
+    .modal-box {
+        background: #1e293b; border: 1px solid rgba(255,255,255,0.1);
+        padding: 24px; border-radius: 8px; width: 400px; max-width: 90%;
+    }
+    /* Nâng cấp Modal */
+.modal-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.7); /* Tối hơn chút để nổi bật nội dung */
+    display: flex; align-items: center; justify-content: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: #1e293b;
+    padding: 30px;
+    border-radius: 12px;
+    width: 450px;
+    max-width: 90%;
+    color: #e2e8f0;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    border: 1px solid rgba(255,255,255,0.1);
+}
+
+.modal-content h3 {
+    margin-top: 0;
+    border-bottom: 2px solid #3b82f6;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+    color: #fff;
+}
+
+.modal-content p {
+    margin: 12px 0;
+    font-size: 0.95rem;
+    display: flex;
+    justify-content: space-between;
+}
+
+.modal-content p strong {
+    color: #94a3b8;
+    min-width: 120px;
+}
+
+.modal-content button {
+    margin-top: 25px;
+    width: 100%;
+    padding: 10px;
+    background: #3b82f6;
+    border: none;
+    border-radius: 6px;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.modal-content button:hover {
+    background: #2563eb;
+}
+.btn-copy-table {
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 6px;
+    cursor: pointer;
+    color: #64748b; /* Màu xám xanh nhẹ */
+    transition: all 0.25s ease; /* Hiệu ứng mượt mà */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-copy-table:hover {
+    color: #3b82f6; /* Đổi màu xanh khi di chuột */
+    background: rgba(59, 130, 246, 0.1);
+}
+
+/* Hiệu ứng khi bấm thành công */
+.btn-copy-table.copied {
+    color: #10b981 !important; /* Đổi thành màu xanh lá */
+    transform: scale(1.1); /* Hơi phóng to nhẹ để nhấn mạnh */
+}
+
+/* Tinh chỉnh Modal content */
+.modal-content {
+    background: #1e293b;
+    padding: 24px;
+    border-radius: 12px;
+    color: #f1f5f9;
+}
+/* Container của mỗi dòng thông tin */
+.info-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.info-row span {
+    display: flex;
+    align-items: center;
+}
+
+/* Nút Copy "sang chảnh" */
+.btn-copy-mini {
+    background: transparent !important;
+    border: none !important;
+    cursor: pointer !important;
+    color: #64748b !important;
+    padding: 5px 5px 5px 5px!important; /* Giảm padding trên dưới */
+    margin-left: 8px !important;
+    transition: all 0.2s ease;
+    /* Căn chỉnh quan trọng */
+    display: inline-flex !important;
+    align-items: start !important;
+    vertical-align: middle; 
+    line-height: 1; /* Đảm bảo icon không bị giãn dòng */
+}
+
+/* Hiện nút khi di chuột vào dòng chứa nó */
+.info-row:hover .btn-copy-mini {
+    opacity: 1;
+}
+
+/* Hover vào nút thì đổi màu xanh dương */
+.btn-copy-mini:hover {
+    color: #3b82f6 !important;
+    transform: scale(1.2);
+}
+
+/* Trạng thái thành công */
+.btn-copy-mini.copied {
+    color: #10b981 !important;
+    opacity: 1 !important;
+}
+
+@media (max-width: 768px) {
+    /* 1. Ẩn các cột có class mobile-hide */
+    .mobile-hide {
+        display: none !important;
+    }
+
+    /* 2. Hiển thị các cột có class mobile-show */
+    .mobile-show {
+        display: table-cell !important;
+    }
+
+    /* 3. Đảm bảo bảng không bị vỡ khung */
+    .db-table {
+        width: 100% !important;
+        display: table !important;
+        table-layout: auto !important; /* Để tự động co giãn theo nội dung */
+    }
+
+    /* 4. Nhóm nút thao tác */
+    .btn-group-action {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 5px !important;
+    }
+
+    .btn-sm {
+        width: 100% !important;
+        padding: 6px !important;
+        font-size: 10px !important;
+        margin: 0 !important;
+    }
+}
+
+/* Cấu trúc Dashboard chính */
+.dashboard-wrapper {
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.db-sidebar {
+    width: 260px;
+    height: 100vh;
+    background: #0f172a;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    transition: transform 0.3s ease;
+    z-index: 1000;
+}
+/* --- Cấu trúc cơ bản --- */
+
+/* --- Sidebar Mobile (Cực kỳ quan trọng) --- */
+@media (max-width: 768px) {
+    .db-sidebar {
+        position: fixed;
+        left: -260px; /* Ẩn đi */
+        top: 0; width: 80px; height: 100%;
+        z-index: 1000;
+        transition: 0.3s;
+        background: #0f172a;
+    }
+    .db-sidebar.active { left: 0; } /* Hiện ra */
+
+    /* Overlay mờ giống Facebook */
+    .sidebar-overlay {
+        display: none; position: fixed; top: 0; left: 0;
+        width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 999;
+    }
+    .sidebar-overlay.active { display: block; }
+
+    /* Nút menu */
+    .btn-menu-mobile {
+        z-index: 998; padding: 10px; color: white; border: none;
+    }
+}
+/* Mặc định ẩn nút trên máy tính */
+.btn-menu-mobile {
+    display: none;
+    z-index: 2000; /* Luôn nằm trên cùng */
+}
+
+/* Chỉ hiện trên Mobile */
+@media (max-width: 768px) {
+    .btn-menu-mobile {
+ /* Các thuộc tính cũ */
+    display: block;
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    z-index: 2000;
+    
+    /* Cấu trúc hiệu ứng kính lỏng */
+    background: rgba(59, 131, 246, 0.2); /* Màu xanh nhẹ, độ trong suốt 0.2 */
+    backdrop-filter: blur(10px);        /* Hiệu ứng làm mờ nền phía sau */
+    -webkit-backdrop-filter: blur(10px); /* Hỗ trợ Safari/iOS */
+    border: 1px solid rgba(255, 255, 255, 0.2); /* Viền sáng mỏng tạo độ nổi */
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);  /* Đổ bóng nhẹ */
+    
+    /* Căn giữa icon */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 30px;
+    }
+}
+.btn-menu-mobile:hover {
+    background: rgba(59, 131, 246, 0.4);
+    box-shadow: 0 6px 20px rgba(59, 131, 246, 0.3);
+}   
+.btn-menu-mobile:active {
+    transform: scale(0.9); /* Thu nhỏ lại một chút khi bấm vào */
+    transition: 0.1s;
+}
+
+@media (max-width: 768px) {
+    .btn-group-action {
+        display: grid !important; /* Dùng Grid thay vì Flex */
+        grid-template-columns: 1fr 1fr; /* Chia làm 2 cột bằng nhau */
+        gap: 8px !important; /* Khoảng cách giữa các ô */
+        margin-top: 10px;
+    }
+
+    /* Đảm bảo các nút chiếm hết chiều rộng của ô */
+    .btn-group-action .btn-sm {
+        width: 100% !important;
+        padding: 12px 5px !important; /* Tăng padding để dễ bấm */
+        font-size: 13px !important;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        border-radius: 6px;
+    }
+}
+
+.hidden {
+    display: none !important;
+}

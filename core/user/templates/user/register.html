@@ -1,4 +1,4 @@
-{% extends 'coreapp/base.html' %}
+{% extends 'user/base.html' %}
 {% load static %}
 
 {% block title %}Đăng Ký Tài Khoản | PharmaScan{% endblock %}
@@ -20,7 +20,7 @@
                 <p class="auth-subtitle">Tạo tài khoản để quản trị và tự động hóa form y khoa</p>
             </div>
 
-            <form id="register-form" class="auth-form" onsubmit="event.preventDefault(); window.location.href='{% url 'login' %}';">
+            <form id="register-form" class="auth-form" onsubmit="event.preventDefault(); window.location.href='#';">
                 <div class="form-group">
                     <label for="reg-name" class="form-label">Họ và Tên <span class="required">*</span></label>
                     <div class="input-wrapper">
