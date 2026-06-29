@@ -9,34 +9,27 @@ import secrets
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth import update_session_auth_hash
 def home(request):
-    # Nếu người dùng chưa đăng nhập, bắt buộc đá về trang login trước
     if not request.user.is_authenticated:
-        return redirect('login')  # Đổi từ 'login_view' thành 'login' cho ngắn gọn và chuẩn
+        return redirect('login')
     
-    # Nếu đã đăng nhập rồi thì tùy theo quyền mà trả về giao diện đúng
     return render_by_role(request, request.user)
 
 def login_view(request):
     if request.method == 'POST':
         email = request.POST.get('username')
         password = request.POST.get('password')
-        remember_me = request.POST.get('remember_me') # Lấy checkbox từ HTML
+        remember_me = request.POST.get('remember_me')
 
         user = authenticate(request, username=email, password=password)
         
         if user is None:
-            # Dùng context để gửi thông báo lỗi ra template
             return render(request, 'coreapp/login.html', {'error_message': "Sai email hoặc mật khẩu!"})
         
-        # Đăng nhập thành công
         login(request, user)
         
-        # XỬ LÝ GHI NHỚ ĐĂNG NHẬP
         if remember_me:
-            # Lưu session trong 2 tuần (14 ngày)
             request.session.set_expiry(1209600) 
         else:
-            # Đóng session khi tắt trình duyệt
             request.session.set_expiry(0) 
             
         return render_by_role(request, user)
@@ -48,15 +41,12 @@ def logout_view(request):
     return redirect('/login/')
 
 def render_by_role(request, user):
-    # 1. Nếu là Admin
     if user.role == 'ADMIN' or user.is_staff:
         return redirect('admin_dashboard') 
         
-    # 2. Nếu là User thường
     if user.role == 'USER':
-        return render(request, 'user/home.html') # Hoặc trang chủ của User
+        return render(request, 'user/home.html')
         
-    # 3. Mặc định nếu không thuộc role nào
     logout(request)
     messages.error(request, "Tài khoản của bạn chưa được phân quyền truy cập.")
     return redirect('login')
@@ -74,7 +64,6 @@ def admin_dashboard(request):
         action_type = request.POST.get("action_type")
         target_username = request.POST.get("target_username")
         
-        # --- THAO TÁC: TẠO TÀI KHOẢN ---
         if action_type == "create_user":
             username = request.POST.get("username", "").strip()
             email = request.POST.get("email", "").strip()
@@ -91,7 +80,6 @@ def admin_dashboard(request):
                 pwd = generate_secure_random_password()
                 name_parts = fullname.split(' ', 1)
                 
-                # 1. Tạo user
                 user = User.objects.create_user(
                     username=username, 
                     email=email, 
@@ -104,7 +92,6 @@ def admin_dashboard(request):
                     is_password_changed=False
                 )
                 
-                # 2. GÁN NHÓM (CỰC KỲ QUAN TRỌNG)
                 group_map = {
                     'USER': 'USER',
                     'ADMIN': 'ADMIN'
@@ -119,26 +106,23 @@ def admin_dashboard(request):
                         # Ghi log lỗi nếu bạn chưa tạo Group trong trang Admin
                         print(f"Lỗi: Nhóm '{target_group_name}' chưa được tạo trong DB!")
 
-                # 3. Lưu dữ liệu
                 user.plain_password_temp = pwd
                 user.save()
                 messages.success(request, f"Tạo tài khoản {username} thành công.")
 
-        # --- THAO TÁC: RESET MẬT KHẨU ---
         elif action_type == "reset_password":
             new_pwd = request.POST.get("new_password", "").strip()
             if not new_pwd: new_pwd = generate_secure_random_password()
             try:
                 user = User.objects.get(username=target_username)
                 user.set_password(new_pwd)
-                user.plain_password_temp = new_pwd # LƯU VÀO DB
+                user.plain_password_temp = new_pwd
                 user.is_password_changed = False
                 user.save()
                 messages.success(request, f"Đã reset mật khẩu cho {target_username}")
             except User.DoesNotExist:
                 messages.error(request, "Không tìm thấy user.")
 
-        # --- THAO TÁC: KHÓA/MỞ TÀI KHOẢN ---
         elif action_type == "toggle_status":
             current_status = request.POST.get("current_status")
             try:
@@ -150,10 +134,8 @@ def admin_dashboard(request):
                 messages.error(request, "Lỗi cập nhật user.")
         elif action_type == "delete_user":
             try:
-                # Tìm user theo username
                 user_to_delete = User.objects.get(username=target_username)
                 
-                # Kiểm tra an toàn: Không cho phép Admin xóa chính mình
                 if user_to_delete == request.user:
                     messages.error(request, "Bạn không thể tự xóa tài khoản của chính mình!")
                 else:
@@ -164,16 +146,14 @@ def admin_dashboard(request):
             return redirect('admin_dashboard')
 
         return redirect('admin_dashboard')
-    # Lấy toàn bộ user để hiển thị bảng
     all_users = User.objects.all().order_by('-date_joined')
     
-    # Lọc người dùng theo Role đã lưu trong DB (hoặc theo Group)
     user_accounts = User.objects.filter(role='USER')
     admin_accounts = User.objects.filter(role='ADMIN')
 
     context = {
         'all_users': all_users,
-        'user_accounts': user_accounts, # Đổi tên cho dễ quản lý
+        'user_accounts': user_accounts,
         'admin_accounts': admin_accounts,
     }
     return render(request, 'admin/admin.html', context)
@@ -181,9 +161,8 @@ def admin_dashboard(request):
 def change_password_view(request):
     if request.method == 'POST':
         new_password = request.POST.get('new_password')
-        confirm_password = request.POST.get('confirm_password') # Sửa ở đây
+        confirm_password = request.POST.get('confirm_password')
         
-        # Kiểm tra trùng khớp
         if new_password != confirm_password: 
             messages.error(request, "Mật khẩu không khớp!")
             return redirect('home')

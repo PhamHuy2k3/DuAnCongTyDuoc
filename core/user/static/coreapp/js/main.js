@@ -1,12 +1,4 @@
-/**
- * PharmaScan - Frontend Interaction, Dashboard & Lab Receipt OCR Simulation Engine
- * Author: Antigravity AI
- */
-
 document.addEventListener('DOMContentLoaded', () => {
-    // ==========================================================================
-    // 1. STICKY HEADER & NAVBAR EFFECTS
-    // ==========================================================================
     const header = document.getElementById('header');
     if (header) {
         window.addEventListener('scroll', () => {
@@ -18,9 +10,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // ==========================================================================
-    // 2. AUTHENTICATION (LOGIN / REGISTER) INTERACTIVE LOGIC
-    // ==========================================================================
     const demoOpBtn = document.getElementById('btn-demo-operator');
     const demoAdminBtn = document.getElementById('btn-demo-admin');
     const loginEmailInput = document.getElementById('login-email');
@@ -28,7 +17,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const loginForm = document.getElementById('login-form');
 
     if (demoOpBtn && demoAdminBtn) {
-        // Operator quick login mock
         demoOpBtn.addEventListener('click', () => {
             if (loginEmailInput && loginPasswordInput) {
                 loginEmailInput.value = demoOpBtn.getAttribute('data-email');
@@ -40,7 +28,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // Admin quick login mock
         demoAdminBtn.addEventListener('click', () => {
             if (loginEmailInput && loginPasswordInput) {
                 loginEmailInput.value = demoAdminBtn.getAttribute('data-email');
@@ -76,24 +63,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // ==========================================================================
-    // 3. ADMIN DASHBOARD SYSTEM INTERACTIONS
-    // ==========================================================================
     const sidebarMenuItems = document.querySelectorAll('.db-menu-item');
     const tabPanes = document.querySelectorAll('.db-tab-pane');
     const dbTabTitle = document.getElementById('db-tab-title');
 
     if (sidebarMenuItems.length > 0) {
-        // Tab switching logic
         sidebarMenuItems.forEach(item => {
             item.addEventListener('click', () => {
                 const targetTabId = item.getAttribute('data-tab');
                 
-                // Active menu state
                 sidebarMenuItems.forEach(menu => menu.classList.remove('active'));
                 item.classList.add('active');
 
-                // Active tab pane state
                 tabPanes.forEach(pane => {
                     pane.classList.add('hidden');
                     pane.classList.remove('active');
@@ -104,14 +85,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     targetPane.classList.add('active');
                 }
 
-                // Update navbar title
                 if (dbTabTitle) {
                     dbTabTitle.textContent = item.querySelector('span').textContent;
                 }
             });
         });
 
-        // Live date display today
         const liveDateEl = document.getElementById('db-live-date');
         if (liveDateEl) {
             const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
@@ -119,7 +98,6 @@ document.addEventListener('DOMContentLoaded', () => {
             liveDateEl.textContent = today.toLocaleDateString('vi-VN', options);
         }
 
-        // Dynamic Verification & Audit Modal Logic
         const btnTriggerAudit = document.getElementById('btn-trigger-audit');
         const rowPendingAmox = document.getElementById('row-pending-amox');
         const auditModal = document.getElementById('audit-modal');
@@ -151,7 +129,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
 
-            // Approve Action Event
             btnAuditApprove.addEventListener('click', () => {
                 btnAuditApprove.textContent = 'Đang lưu vào kho...';
                 btnAuditApprove.setAttribute('disabled', 'true');
@@ -230,7 +207,6 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        // Excel Document Export Simulation
         const btnExportExcel = document.getElementById('btn-export-excel');
         const dlProgressBox = document.getElementById('dl-progress-box');
         const dlProgressFill = document.getElementById('dl-progress-fill');
@@ -268,12 +244,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-
-    // ==========================================================================
-    // 4. SCAN PAGE SCANNER ENGINE & INTERACTION
-    // ==========================================================================
     const dropzone = document.getElementById('document-dropzone');
-    if (!dropzone) return; // Exit if not on scanning page
+    if (!dropzone) return;
 
     const fileInput = document.getElementById('file-input');
     const dropzonePrompt = document.getElementById('dropzone-prompt');
@@ -290,13 +262,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnFormSubmit = document.getElementById('btn-form-submit');
     const consoleStatusDot = document.querySelector('.console-status-dot');
 
-    // Quick Templates Buttons
     const tempPara = document.getElementById('temp-para');
     const tempAmox = document.getElementById('temp-amox');
     const tempVac = document.getElementById('temp-vac');
     const templateButtons = document.querySelectorAll('.btn-template');
 
-    // LAB RECEIPT DYNAMIC MOCKUP CONTROLS & SELECTIONS (New Giai đoạn 3)
     const btnTabWord = document.getElementById('btn-tab-word');
     const btnTabPhoto = document.getElementById('btn-tab-photo');
     const wordTemplatesBlock = document.getElementById('word-templates-selection');
@@ -306,7 +276,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const panelWordForm = document.getElementById('panel-word-form');
     const panelPhotoForm = document.getElementById('panel-photo-form');
     
-    // Weight Uniformity target fields
     const photoStatusBadge = document.getElementById('photo-status-badge');
     const valMean = document.getElementById('val-mean');
     const valRsd = document.getElementById('val-rsd');
@@ -315,17 +284,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnSyncCoa = document.getElementById('btn-sync-coa');
     const photoLaserLine = document.getElementById('photo-laser-line');
     
-    // OCR progress bar elements
     const ocrProgressBox = document.getElementById('ocr-progress-box');
     const ocrProgressFill = document.getElementById('ocr-progress-fill');
     const ocrProgressPercent = document.getElementById('ocr-progress-percent');
     const ocrProgressLabel = document.getElementById('ocr-progress-label');
 
-    let currentScanMode = 'word'; // 'word' or 'photo'
+    let currentScanMode = 'word';
     let selectedDocumentKey = null;
     let isProcessing = false;
 
-    // Helper to toggle scan button state and premium glow animations
     function setScanButtonState(enabled) {
         if (!btnStartProcess) return;
         if (enabled) {
@@ -337,7 +304,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Weight Uniformity Mock Values Database (DRP INTER Lô 1226003)
     const mockPillWeights = [
         "0.258", "0.255", "0.256", "0.254", "0.252", 
         "0.256", "0.260", "0.258", "0.255", "0.257",
@@ -345,7 +311,6 @@ document.addEventListener('DOMContentLoaded', () => {
         "0.255", "0.253", "0.258", "0.256", "0.255"
     ];
 
-    // Add message to live console
     function addLog(text, type = 'system') {
         if (!consoleLogs) return;
         const timestamp = new Date().toLocaleTimeString();
@@ -356,7 +321,6 @@ document.addEventListener('DOMContentLoaded', () => {
         consoleLogs.scrollTop = consoleLogs.scrollHeight;
     }
 
-    // Toggle Modes (Word vs Photo Scanner)
     if (btnTabWord && btnTabPhoto) {
         btnTabWord.addEventListener('click', () => {
             if (isProcessing) return;
@@ -415,7 +379,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Mock Documents Database
     const mockDocuments = {
         paracetamol: {
             fileName: 'PhieuThongTin_Paracetamol_500mg.docx',
@@ -482,7 +445,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // Set selected document preview on paper mockup
     function loadDocumentState(key) {
         if (isProcessing) return;
         selectedDocumentKey = key;
@@ -525,7 +487,6 @@ document.addEventListener('DOMContentLoaded', () => {
         resetFormInputs();
     }
 
-    // Connect Quick templates button events
     templateButtons.forEach(button => {
         button.addEventListener('click', () => {
             const targetKey = button.getAttribute('data-target');
@@ -533,7 +494,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Setup input file click behavior
     dropzonePrompt.addEventListener('click', () => {
         fileInput.click();
     });
@@ -545,7 +505,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Drag over styling
     dropzone.addEventListener('dragover', (e) => {
         e.preventDefault();
         if (!isProcessing) dropzone.classList.add('dragover');
@@ -566,7 +525,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // File reset clear actions
     btnResetScan.addEventListener('click', (e) => {
         e.stopPropagation();
         if (isProcessing) return;
@@ -657,12 +615,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (btnSyncCoa) btnSyncCoa.setAttribute('disabled', 'true');
     }
 
-    // Handle dropping/browsing a real user file
     function simulateCustomFileUpload(fileName) {
         if (isProcessing) return;
         
         const nameLower = fileName.toLowerCase();
-        // Check if user uploaded a photo of balance receipt (jpg, png)
         if (nameLower.endsWith('.jpg') || nameLower.endsWith('.jpeg') || nameLower.endsWith('.png')) {
             btnTabPhoto.click();
             addLog(`Analyzing uploaded photo: <strong>${fileName}</strong>`, 'system');
@@ -679,7 +635,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 addLog(`Photo processed. Valid laboratory balance receipt signature match.`, 'success');
                 
-                // Automatically start the scanning process after manual upload
                 if (btnStartProcess) {
                     btnStartProcess.click();
                 }
@@ -687,7 +642,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Default to Word file import
         btnTabWord.click();
         addLog(`Analyzing uploaded file: <strong>${fileName}</strong>`, 'system');
         addLog(`Converting .docx binary stream into HTML components...`, 'process');
@@ -706,8 +660,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 1200);
     }
 
-    // MAIN AI SCANNER SIMULATION ACTION (Supports Word & Photo scan pipelines)
-    // Helper function to type values dynamically (Typewriter Effect)
     function typeValue(inputEl, indicatorEl, val, callback) {
         if (!inputEl) {
             if (callback) callback();
@@ -732,7 +684,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 15);
     }
 
-    // Helper to dynamically update dropzone prompts based on active tab
     function updateDropzoneText(mode) {
         const titleEl = document.getElementById('dropzone-title-main');
         const supportEl = document.getElementById('dropzone-support-main');
@@ -747,7 +698,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // MAIN AI SCANNER ENGINE AND PROGRESS ANIMATION LOOP
     btnStartProcess.addEventListener('click', () => {
         if (isProcessing) return;
         
@@ -776,7 +726,6 @@ document.addEventListener('DOMContentLoaded', () => {
             formStatusBadge.className = 'status-badge scanning';
             consoleStatusDot.className = 'console-status-dot active';
             
-            // Show and reset OCR progress box
             if (ocrProgressBox) {
                 ocrProgressBox.classList.remove('hidden');
                 ocrProgressFill.style.width = '0%';
@@ -788,7 +737,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const dataKeys = Object.keys(doc.formData);
             const loggedMilestones = new Set();
             
-            const duration = 2500; // 2.5 seconds
+            const duration = 2500;
             const startTime = performance.now();
             
             function updateWordScan(currentTime) {
@@ -832,7 +781,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (ocrProgressLabel) ocrProgressLabel.textContent = 'Đang ánh xạ các trường biểu mẫu...';
                 }
                 
-                // Fill fields sequentially between 50% and 90% (span of 40%)
                 if (percent >= 50 && percent < 90) {
                     const fieldsToFill = Math.min(10, Math.floor((percent - 50) / 4));
                     if (ocrProgressLabel) ocrProgressLabel.textContent = `Đang điền thông tin thuốc (${fieldsToFill}/10)...`;
@@ -867,7 +815,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     if (ocrProgressLabel) ocrProgressLabel.textContent = 'Hoàn tất trích xuất tài liệu!';
                     
-                    // Guarantee all fields filled
                     for (let i = 0; i < 10; i++) {
                         const key = dataKeys[i];
                         const val = doc.formData[key];
@@ -893,7 +840,6 @@ document.addEventListener('DOMContentLoaded', () => {
             requestAnimationFrame(updateWordScan);
         } 
         else {
-            // PHOTO OCR BALANCE RECEIPT MODE
             btnResetPhoto.setAttribute('disabled', 'true');
             resetPhotoFormInputs();
             
@@ -910,7 +856,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             const loggedMilestones = new Set();
-            const duration = 2500; // 2.5 seconds
+            const duration = 2500;
             const startTime = performance.now();
             
             function updatePhotoScan(currentTime) {
@@ -961,7 +907,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
                 
-                // Fill pills sequentially between 50% and 85% (span of 35%)
                 if (percent >= 50 && percent < 85) {
                     const pillsToFill = Math.min(20, Math.floor((percent - 50) / 1.75));
                     if (ocrProgressLabel) ocrProgressLabel.textContent = `Đang trích xuất dữ liệu khối lượng (${pillsToFill}/20)...`;
@@ -1007,7 +952,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     if (ocrProgressLabel) ocrProgressLabel.textContent = 'Hoàn tất quét phiếu cân lab!';
                     
-                    // Ensure all 20 pills are filled
                     for (let i = 0; i < 20; i++) {
                         const pillNum = i + 1;
                         const val = mockPillWeights[i];
@@ -1057,10 +1001,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function finishPhotoScanningProcess() {
-        // Stop Laser animation
         photoLaserLine.classList.add('hidden');
         
-        // Update form status badge
         photoStatusBadge.textContent = 'Hoàn tất';
         photoStatusBadge.className = 'status-badge completed';
         consoleStatusDot.className = 'console-status-dot idle';
@@ -1074,33 +1016,26 @@ document.addEventListener('DOMContentLoaded', () => {
         btnPhotoClear.removeAttribute('disabled');
         btnSyncCoa.removeAttribute('disabled');
 
-        // Dynamic Uniformity Calculator computations
-        // 1. Calculate Average weight (Mean)
         let total = 0;
         mockPillWeights.forEach(w => total += parseFloat(w));
-        const mean = (total / 20).toFixed(3); // Result: 0.256g
+        const mean = (total / 20).toFixed(3);
         
-        // 2. Set RSD% relative standard deviation mockup value
         const rsdVal = "0.82%";
 
-        // Write calculations on UI
         valMean.textContent = `${mean} g`;
         valRsd.textContent = rsdVal;
         
         valResult.textContent = 'Đạt yêu cầu';
         valResult.style.color = 'var(--success)';
         
-        // Add uniformity card neon glow pulse
         document.getElementById('uniformity-card-glow').classList.add('active-glow');
 
-        // Log completion
         addLog(`🎉 <strong>AI OCR Calculations Complete!</strong>`, 'success');
         addLog(`Uniformity results: Average = <strong>${mean}g</strong> | RSD% = <strong>${rsdVal}</strong>`, 'success');
         addLog(`All 20 tablets are within the Pharmacopoeia limit (±5%). Verdict: <strong>PASSED</strong>.`, 'success');
         addLog(`Ready to synchronize and generate DRP INTER COA Report.`, 'success');
     }
 
-    // Word Form buttons actions
     if (btnFormClear) {
         btnFormClear.addEventListener('click', () => {
             if (isProcessing) return;
@@ -1112,12 +1047,32 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnFormSubmit) {
         btnFormSubmit.addEventListener('click', () => {
             if (isProcessing) return;
+            
+            const wordFormData = {
+                trade_name: sanitizeFieldValue(document.getElementById('trade_name')?.value || ''),
+                active_ingredient: sanitizeFieldValue(document.getElementById('active_ingredient')?.value || ''),
+                strength: sanitizeFieldValue(document.getElementById('strength')?.value || ''),
+                dosage_form: sanitizeFieldValue(document.getElementById('dosage_form')?.value || ''),
+                manufacturer: sanitizeFieldValue(document.getElementById('manufacturer')?.value || ''),
+                batch_number: sanitizeFieldValue(document.getElementById('batch_number')?.value || ''),
+                registration_number: sanitizeFieldValue(document.getElementById('registration_number')?.value || ''),
+                mfg_date: sanitizeFieldValue(document.getElementById('mfg_date')?.value || ''),
+                exp_date: sanitizeFieldValue(document.getElementById('exp_date')?.value || ''),
+                indications: sanitizeFieldValue(document.getElementById('indications')?.value || ''),
+                scan_date: new Date().toLocaleDateString('vi-VN'),
+                form_type: 'word_extraction'
+            };
+            
+            sessionStorage.setItem('word_form_data', JSON.stringify(wordFormData));
+            
+            addLog('✅ Word Form data saved (cleaned format)', 'success');
+            addLog('📋 Dữ liệu sản phẩm đã được lưu không có định dạng', 'info');
+            
             successModal.classList.remove('hidden');
             addLog('Form submission event triggered. Payload sent successfully.', 'success');
         });
     }
 
-    // Photo Form buttons actions (Giai đoạn 3)
     if (btnPhotoClear) {
         btnPhotoClear.addEventListener('click', () => {
             if (isProcessing) return;
@@ -1126,26 +1081,18 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Sync button redirecting to digitized Certificate of Analysis (form1.html)
+    function sanitizeFieldValue(value) {
+        if (!value) return '';
+        let clean = value.replace(/<[^>]*>/g, '');
+        clean = clean.replace(/\n\s+/g, ' ').trim();
+        return clean;
+    }
+
     if (btnSyncCoa) {
         btnSyncCoa.addEventListener('click', () => {
             if (isProcessing) return;
-            
-            // Save calculated values to localStorage to dynamically fill form1.html
-            localStorage.setItem('is_scanned_photo', 'true');
-            localStorage.setItem('scan_trade_name', 'ZANDYRINE 10 MG');
-            localStorage.setItem('scan_batch_number', '1226003');
-            localStorage.setItem('scan_mfg_date', '01.04.26');
-            localStorage.setItem('scan_exp_date', '31.03.29');
-            localStorage.setItem('scan_dosage_form', 'VIÊN NÉN BAO PHIM');
-            localStorage.setItem('scan_packing', 'Hộp 3 vỉ x 10 viên');
-            localStorage.setItem('scan_product_code', 'AN1221T');
-            localStorage.setItem('scan_std_number', 'QCFPAN1221T/ Lần ban hành: 01');
-            localStorage.setItem('scan_report_number', 'QC-FP-26-0063');
-            localStorage.setItem('scan_avg_weight', '0.256g');
-            localStorage.setItem('scan_rsd', '0.82%');
 
-            addLog('Synchronizing weights to Certificate of Analysis...', 'process');
+            addLog('📋 Đang chuyển hướng đến 20 phiếu kiểm nghiệm...', 'process');
             
             setTimeout(() => {
                 window.location.href = '/coa/';

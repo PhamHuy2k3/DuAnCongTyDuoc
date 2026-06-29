@@ -1,0 +1,13 @@
+{% load static %}
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+{{ head_content | safe }}
+<body>
+<!-- 20 bản sao nguyên vẹn của form gốc (form1.html) -->
+{% for i in pill_data %}
+<div class="page-wrapper" style="page-break-after: always;">
+{{ body_content | safe }}
+</div>
+{% endfor %}
+</body>
+</html>

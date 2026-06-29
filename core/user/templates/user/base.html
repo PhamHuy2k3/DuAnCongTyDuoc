@@ -40,18 +40,53 @@
                 <a href="#about-section" class="nav-link" id="nav-about">Giới Thiệu</a>
                 <a href="#solution-section" class="nav-link" id="nav-solution">Giải Pháp</a>
                 <a href="{% url 'scan_demo' %}" class="nav-link {% if request.resolver_match.url_name == 'scan_demo' %}active{% endif %}" id="nav-scan">Trải Nghiệm Quét</a>
-                <a href="{% url 'dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" id="nav-dashboard">Dashboard Admin</a>
-                <a href="{% url 'logout' %}" class="nav-link">logout</a>
+                {% if user.is_authenticated %}
+                <a href="{% url 'dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" id="nav-dashboard">Dashboard</a>
+                {% endif %}
             </nav>
 
             <div class="nav-actions">
-                <a href="{% url 'login' %}" class="btn btn-secondary btn-nav {% if request.resolver_match.url_name == 'login' %}active{% endif %}" id="btn-nav-login" style="border-radius: 6px; padding: 6px 14px;">Đăng Nhập</a>
+                {% if user.is_authenticated %}
+                <!-- User Avatar Dropdown -->
+                <div class="user-dropdown" id="user-dropdown">
+                    <button class="user-dropdown-trigger" id="user-dropdown-trigger" aria-label="User menu">
+                        <div class="nav-avatar">{{ user.username|first|upper }}</div>
+                        <span class="user-dropdown-name">{{ user.username }}</span>
+                        <svg class="dropdown-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </button>
+                    <div class="user-dropdown-menu" id="user-dropdown-menu">
+                        <div class="dropdown-header">
+                            <div class="dropdown-avatar">{{ user.username|first|upper }}</div>
+                            <div class="dropdown-user-info">
+                                <span class="dropdown-user-name">{{ user.get_full_name|default:user.username }}</span>
+                                <span class="dropdown-user-email">{{ user.email|default:"" }}</span>
+                            </div>
+                        </div>
+                        <div class="dropdown-divider"></div>
+                        <a href="{% url 'dashboard' %}" class="dropdown-item">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                            <span>Bảng điều khiển</span>
+                        </a>
+                        <a href="{% url 'profile' %}" class="dropdown-item">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                            <span>Trang cá nhân</span>
+                        </a>
+                        <div class="dropdown-divider"></div>
+                        <a href="{% url 'logout' %}" class="dropdown-item dropdown-item-danger">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                            <span>Đăng xuất</span>
+                        </a>
+                    </div>
+                </div>
+                {% else %}
+                <a href="{% url 'login' %}" class="btn btn-secondary btn-nav {% if request.resolver_match.url_name == 'login' %}active{% endif %}" id="btn-nav-login">Đăng Nhập</a>
                 <a href="{% url 'scan_demo' %}" class="btn btn-primary btn-nav" id="btn-nav-cta">
                     <span>Quét Ngay</span>
                     <svg class="btn-arrow" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M5 12H19M19 12L12 5M19 12L12 19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
                 </a>
+                {% endif %}
                 <button class="mobile-toggle" id="mobile-menu-toggle" aria-label="Toggle Menu">
                     <span></span>
                     <span></span>

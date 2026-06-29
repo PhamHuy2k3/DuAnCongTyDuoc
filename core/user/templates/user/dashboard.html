@@ -1,84 +1,73 @@
 {% extends 'user/base.html' %}
 {% load static %}
 
-{% block title %}Bảng Điều Khiển Quản Trị | PharmaScan{% endblock %}
+{% block title %}Bảng Điều Khiển | PharmaScan{% endblock %}
 
 {% block extra_head %}
 <style>
-    /* Custom style override to hide base navbar/footer on Dashboard for cleaner space */
-    .header, .footer {
-        display: none !important;
-    }
-    body {
-        padding-top: 0 !important;
-        background-color: var(--bg-dark);
-    }
-    .main-content {
-        min-height: 100vh;
-        display: flex;
-    }
+    .header, .footer { display: none !important; }
+    body { padding-top: 0 !important; background-color: var(--bg-dark); }
+    .main-content { min-height: 100vh; display: flex; }
+    .status-pill { font-size: 0.72rem; font-weight: 700; padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
+    .pill-pending { background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); }
+    .pill-approved { background: rgba(16, 185, 129, 0.15); color: var(--success); border: 1px solid rgba(16, 185, 129, 0.3); }
+    .pill-rejected { background: rgba(244, 63, 94, 0.15); color: var(--danger); border: 1px solid rgba(244, 63, 94, 0.3); }
+    .badge-count { font-size: 0.68rem; font-weight: 800; padding: 2px 7px; border-radius: 10px; }
+    .kpi-num-empty { color: var(--text-muted); font-size: 1rem; }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="dashboard-wrapper w-full">
-    <!-- 1. LEFT SIDEBAR PANEL -->
+    <!-- SIDEBAR -->
     <aside class="db-sidebar">
         <div class="db-sidebar-brand">
             <a href="{% url 'home' %}" class="logo">
-                <svg class="logo-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <rect x="3" y="10" width="18" height="8" rx="4" transform="rotate(-45 3 10)" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/>
-                    <path d="M9.5 9.5L14.5 14.5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
-                    <circle cx="17.5" cy="6.5" r="2" fill="currentColor"/>
-                </svg>
+                <svg class="logo-icon" viewBox="0 0 24 24" fill="none"><rect x="3" y="10" width="18" height="8" rx="4" transform="rotate(-45 3 10)" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/><path d="M9.5 9.5L14.5 14.5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><circle cx="17.5" cy="6.5" r="2" fill="currentColor"/></svg>
                 <span class="logo-text">Pharma<span class="highlight">Scan</span></span>
             </a>
-            <span class="db-role-badge">ADMIN PANEL</span>
+            <span class="db-role-badge">{{ request.user.role }}</span>
         </div>
-
         <nav class="db-sidebar-menu">
             <button class="db-menu-item active" data-tab="tab-overview">
-                <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
                 <span>Tổng quan KPI</span>
             </button>
             <button class="db-menu-item" data-tab="tab-scans">
-                <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
                 <span>Lịch sử & Duyệt</span>
-                <span class="pending-count-bubble" id="side-pending-bubble">1</span>
+                {% if pending_count > 0 %}<span class="pending-count-bubble" id="side-pending-bubble">{{ pending_count }}</span>{% endif %}
             </button>
             <button class="db-menu-item" data-tab="tab-medicines">
-                <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
+                <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
                 <span>Danh mục Dược phẩm</span>
             </button>
             <button class="db-menu-item" data-tab="tab-templates">
-                <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+                <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
                 <span>Cấu hình Mẫu Word</span>
             </button>
         </nav>
-
         <div class="db-sidebar-footer">
             <div class="user-profile-flex">
-                <div class="avatar">DS</div>
+                <div class="avatar">{{ request.user.username|first|upper }}</div>
                 <div class="user-info">
-                    <span class="user-name">Dược sĩ Admin</span>
-                    <span class="user-role">Kiểm duyệt viên cấp cao</span>
+                    <span class="user-name">{{ request.user.get_full_name|default:request.user.username }}</span>
+                    <span class="user-role">{{ request.user.get_role_display }}</span>
                 </div>
             </div>
-            <a href="{% url 'home' %}" class="btn-logout" title="Đăng xuất">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+            <a href="{% url 'logout' %}" class="btn-logout" title="Đăng xuất">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
                 <span>Đăng xuất</span>
             </a>
         </div>
     </aside>
 
-    <!-- 2. MAIN DASHBOARD CONTENT AREA -->
+    <!-- MAIN -->
     <main class="db-main">
         <header class="db-navbar">
-            <div class="db-nav-left">
-                <h2 id="db-tab-title">Tổng quan Hệ thống</h2>
-            </div>
+            <div class="db-nav-left"><h2 id="db-tab-title">Tổng quan Hệ thống</h2></div>
             <div class="db-nav-right">
-                <div class="db-date-today" id="db-live-date">Thứ Năm, 28 Tháng 5, 2026</div>
+                <div class="db-date-today" id="db-live-date"></div>
                 <div class="db-nav-action-buttons">
                     <a href="{% url 'scan_demo' %}" class="btn btn-secondary btn-nav">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height:14px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
@@ -89,139 +78,101 @@
         </header>
 
         <div class="db-content-scroll">
-            <!-- ==========================================================
-                 TAB 1: OVERVIEW TAB
-                 ========================================================== -->
+            <!-- TAB 1: OVERVIEW -->
             <div class="db-tab-pane active" id="tab-overview">
-                <!-- KPI Status Cards Grid -->
                 <div class="kpi-grid">
                     <div class="kpi-card glass-card">
                         <div class="kpi-icon-wrapper blue">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
                         </div>
                         <div class="kpi-details">
-                            <span class="kpi-num" id="kpi-total">48</span>
+                            <span class="kpi-num" id="kpi-total">{{ total_scans }}</span>
                             <span class="kpi-label">Tổng tệp Word đã quét</span>
                         </div>
                     </div>
-
                     <div class="kpi-card glass-card" id="kpi-pending-card">
-                        <div class="kpi-icon-wrapper orange pulse-icon">
+                        <div class="kpi-icon-wrapper orange {% if pending_count > 0 %}pulse-icon{% endif %}">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                         </div>
                         <div class="kpi-details">
-                            <span class="kpi-num" id="kpi-pending" style="color: #f59e0b;">1</span>
+                            <span class="kpi-num" id="kpi-pending" style="color: {% if pending_count > 0 %}#f59e0b{% else %}var(--text-muted){% endif %};">{{ pending_count }}</span>
                             <span class="kpi-label">Hồ sơ chờ duyệt</span>
                         </div>
                     </div>
-
                     <div class="kpi-card glass-card">
                         <div class="kpi-icon-wrapper green">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
                         </div>
                         <div class="kpi-details">
-                            <span class="kpi-num" id="kpi-approved" style="color: var(--success);">47</span>
-                            <span class="kpi-label">Dược phẩm đã duyệt kho</span>
+                            <span class="kpi-num" id="kpi-approved" style="color: var(--success);">{{ approved_count }}</span>
+                            <span class="kpi-label">Dược phẩm đã duyệt</span>
                         </div>
                     </div>
-
                     <div class="kpi-card glass-card">
                         <div class="kpi-icon-wrapper purple">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
                         </div>
                         <div class="kpi-details">
-                            <span class="kpi-num">98.6%</span>
-                            <span class="kpi-label">Độ chính xác trích xuất AI</span>
+                            <span class="kpi-num">{{ avg_accuracy }}%</span>
+                            <span class="kpi-label">Độ chính xác trích xuất</span>
                         </div>
                     </div>
                 </div>
 
-                <!-- Charts Display Grid -->
                 <div class="charts-grid">
-                    <!-- Column Left: Interactive SVG Chart -->
                     <div class="card glass-card chart-container-card">
-                        <h4 class="chart-card-title">Tần Suất Quét Tài Liệu Theo Tuần</h4>
-                        <div class="svg-chart-wrapper">
-                            <svg class="svg-line-chart" viewBox="0 0 500 200">
-                                <defs>
-                                    <linearGradient id="chart-glow" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="0%" stop-color="var(--primary)" stop-opacity="0.4"/>
-                                        <stop offset="100%" stop-color="var(--primary)" stop-opacity="0"/>
-                                    </linearGradient>
-                                </defs>
-                                <!-- Grid Lines -->
-                                <line x1="30" y1="20" x2="480" y2="20" stroke="rgba(255,255,255,0.03)" stroke-width="1"/>
-                                <line x1="30" y1="70" x2="480" y2="70" stroke="rgba(255,255,255,0.03)" stroke-width="1"/>
-                                <line x1="30" y1="120" x2="480" y2="120" stroke="rgba(255,255,255,0.03)" stroke-width="1"/>
-                                <line x1="30" y1="170" x2="480" y2="170" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
-                                
-                                <!-- Chart Area -->
-                                <path d="M 30 170 Q 100 80 170 120 T 310 50 T 450 60 L 450 170 Z" fill="url(#chart-glow)"/>
-                                <path d="M 30 170 Q 100 80 170 120 T 310 50 T 450 60" fill="none" stroke="var(--primary)" stroke-width="3" stroke-linecap="round"/>
-                                
-                                <!-- Dot points -->
-                                <circle cx="100" cy="98" r="4" fill="var(--bg-dark)" stroke="var(--primary)" stroke-width="2" />
-                                <circle cx="170" cy="120" r="4" fill="var(--bg-dark)" stroke="var(--primary)" stroke-width="2" />
-                                <circle cx="240" cy="85" r="4" fill="var(--bg-dark)" stroke="var(--primary)" stroke-width="2" />
-                                <circle cx="310" cy="50" r="4" fill="var(--bg-dark)" stroke="var(--primary)" stroke-width="2" />
-                                <circle cx="380" cy="53" r="4" fill="var(--bg-dark)" stroke="var(--primary)" stroke-width="2" />
-                                <circle cx="450" cy="60" r="4" fill="var(--bg-dark)" stroke="var(--primary)" stroke-width="2" />
-                                
-                                <!-- X Axis Labels -->
-                                <text x="25" y="190" fill="var(--text-muted)" font-size="9px">Thứ 2</text>
-                                <text x="95" y="190" fill="var(--text-muted)" font-size="9px">Thứ 3</text>
-                                <text x="165" y="190" fill="var(--text-muted)" font-size="9px">Thứ 4</text>
-                                <text x="235" y="190" fill="var(--text-muted)" font-size="9px">Thứ 5</text>
-                                <text x="305" y="190" fill="var(--text-muted)" font-size="9px">Thứ 6</text>
-                                <text x="375" y="190" fill="var(--text-muted)" font-size="9px">Thứ 7</text>
-                                <text x="445" y="190" fill="var(--text-muted)" font-size="9px">CN</text>
-                            </svg>
+                        <h4 class="chart-card-title">Hoạt Động Quét Gần Đây</h4>
+                        {% if latest_docs %}
+                        <div style="display:flex;flex-direction:column;gap:12px;">
+                            {% for doc in latest_docs|slice:":5" %}
+                            <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:rgba(255,255,255,0.02);border-radius:8px;">
+                                <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1;">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;flex-shrink:0;color:var(--primary);"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                                    <span style="font-size:0.82rem;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ doc.file_name }}</span>
+                                </div>
+                                <span class="status-pill {% if doc.status == 'pending' %}pill-pending{% elif doc.status == 'approved' %}pill-approved{% else %}pill-rejected{% endif %}">{{ doc.get_status_display }}</span>
+                            </div>
+                            {% endfor %}
                         </div>
+                        {% else %}
+                        <p style="color:var(--text-muted);font-size:0.88rem;text-align:center;padding:40px 0;">Chưa có dữ liệu quét nào.</p>
+                        {% endif %}
                     </div>
 
-                    <!-- Column Right: Distribution Progress list -->
                     <div class="card glass-card chart-container-card">
-                        <h4 class="chart-card-title">Phân Bổ Danh Mục Dược Phẩm Đã Quét</h4>
+                        <h4 class="chart-card-title">Phân Bổ Trạng Thái</h4>
                         <div class="distribution-list">
                             <div class="dist-row">
-                                <div class="dist-labels"><span class="name">Thuốc Giảm Đau & Hạ Sốt</span><span class="pct">42%</span></div>
-                                <div class="dist-progress-bar"><div class="progress" style="width: 42%; background-color: var(--primary);"></div></div>
+                                <div class="dist-labels"><span class="name">Đã duyệt</span><span class="pct">{{ approved_count }}</span></div>
+                                <div class="dist-progress-bar"><div class="progress" style="width: {{ approved_count|default:0 }}%; background-color: var(--success);"></div></div>
                             </div>
                             <div class="dist-row">
-                                <div class="dist-labels"><span class="name">Thuốc Kháng Sinh & Kháng Viêm</span><span class="pct">30%</span></div>
-                                <div class="dist-progress-bar"><div class="progress" style="width: 30%; background-color: var(--secondary);"></div></div>
+                                <div class="dist-labels"><span class="name">Chờ duyệt</span><span class="pct">{{ pending_count }}</span></div>
+                                <div class="dist-progress-bar"><div class="progress" style="width: {{ pending_count|default:0 }}%; background-color: #f59e0b;"></div></div>
                             </div>
                             <div class="dist-row">
-                                <div class="dist-labels"><span class="name">Vắc-xin & Sinh Phẩm Y Tế</span><span class="pct">18%</span></div>
-                                <div class="dist-progress-bar"><div class="progress" style="width: 18%; background-color: var(--accent);"></div></div>
-                            </div>
-                            <div class="dist-row">
-                                <div class="dist-labels"><span class="name">Vitamin & Thực phẩm chức năng</span><span class="pct">10%</span></div>
-                                <div class="dist-progress-bar"><div class="progress" style="width: 10%; background-color: #8b5cf6;"></div></div>
+                                <div class="dist-labels"><span class="name">Từ chối</span><span class="pct">{{ rejected_count }}</span></div>
+                                <div class="dist-progress-bar"><div class="progress" style="width: {{ rejected_count|default:0 }}%; background-color: var(--danger);"></div></div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- ==========================================================
-                 TAB 2: SCANS HISTORY & AUDIT TAB
-                 ========================================================== -->
+            <!-- TAB 2: SCANS HISTORY & AUDIT -->
             <div class="db-tab-pane hidden" id="tab-scans">
                 <div class="card glass-card table-card">
                     <div class="table-actions-header">
                         <h4 class="table-inner-title">Danh sách tài liệu đã quét</h4>
                         <div class="table-search-box">
-                            <input type="text" class="table-search-input" placeholder="Tìm kiếm tài liệu...">
+                            <input type="text" class="table-search-input" id="table-search-input" placeholder="Tìm kiếm tài liệu...">
                         </div>
                     </div>
-
                     <div class="table-responsive-container">
                         <table class="db-table" id="scans-history-table">
                             <thead>
                                 <tr>
-                                    <th>Tên Tài Liệu Word</th>
-                                    <th>Người Quét</th>
+                                    <th>Tên Tài Liệu</th>
                                     <th>Ngày Quét</th>
                                     <th>Độ chính xác</th>
                                     <th>Trạng Thái</th>
@@ -229,147 +180,82 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <!-- Row 1: Pending Audit (Interactive) -->
-                                <tr class="table-row-pending" id="row-pending-amox" style="cursor: pointer;">
+                                {% for doc in latest_docs %}
+                                <tr class="{% if doc.status == 'pending' %}table-row-pending{% endif %}">
                                     <td class="file-cell">
-                                        <svg class="file-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-                                        <span>ChungNhanChatLuong_Amoxicillin_250mg.docx</span>
+                                        <svg class="file-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                                        <span>{{ doc.file_name }}</span>
                                     </td>
-                                    <td>Nguyễn Văn A</td>
-                                    <td>28/05/2026</td>
-                                    <td class="pct-cell success-text">99.2%</td>
-                                    <td><span class="status-pill orange-pill" id="badge-pending-amox">Chờ Duyệt</span></td>
-                                    <td><button class="btn btn-primary btn-nav btn-table-audit" id="btn-trigger-audit">Kiểm Duyệt</button></td>
-                                </tr>
-
-                                <!-- Row 2: Already Approved -->
-                                <tr>
-                                    <td class="file-cell">
-                                        <svg class="file-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-                                        <span>PhieuThongTin_Paracetamol_500mg.docx</span>
+                                    <td>{{ doc.scanned_at|date:"d/m/Y H:i" }}</td>
+                                    <td class="{% if doc.accuracy_score >= 95 %}success-text{% elif doc.accuracy_score >= 80 %}#f59e0b{% else %}danger-text{% endif %}">{{ doc.accuracy_score }}%</td>
+                                    <td><span class="status-pill {% if doc.status == 'pending' %}pill-pending{% elif doc.status == 'approved' %}pill-approved{% else %}pill-rejected{% endif %}" id="badge-{{ doc.id }}">{{ doc.get_status_display }}</span></td>
+                                    <td>
+                                        {% if doc.status == 'pending' %}
+                                        <button class="btn btn-primary btn-nav btn-table-audit btn-approve-doc" data-doc-id="{{ doc.id }}" style="padding:4px 12px;font-size:0.78rem;">Kiểm Duyệt</button>
+                                        <button class="btn btn-secondary btn-nav btn-reject-doc" data-doc-id="{{ doc.id }}" style="padding:4px 12px;font-size:0.78rem;color:var(--danger);border-color:rgba(244,63,94,0.2);">Từ chối</button>
+                                        {% elif doc.status == 'approved' %}
+                                        <button class="btn btn-secondary btn-nav" disabled style="padding:4px 12px;font-size:0.78rem;">Đã duyệt</button>
+                                        {% else %}
+                                        <button class="btn btn-secondary btn-nav" disabled style="padding:4px 12px;font-size:0.78rem;">Đã từ chối</button>
+                                        {% endif %}
                                     </td>
-                                    <td>Trần Thị B</td>
-                                    <td>27/05/2026</td>
-                                    <td class="pct-cell success-text">98.5%</td>
-                                    <td><span class="status-pill green-pill">Đã Duyệt</span></td>
-                                    <td><button class="btn btn-secondary btn-nav" disabled>Đã lưu</button></td>
                                 </tr>
-
-                                <!-- Row 3: Already Approved -->
-                                <tr>
-                                    <td class="file-cell">
-                                        <svg class="file-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-                                        <span>XacNhanNhapKhau_BioFlu_Vaccine.docx</span>
-                                    </td>
-                                    <td>Nguyễn Văn A</td>
-                                    <td>26/05/2026</td>
-                                    <td class="pct-cell success-text">99.0%</td>
-                                    <td><span class="status-pill green-pill">Đã Duyệt</span></td>
-                                    <td><button class="btn btn-secondary btn-nav" disabled>Đã lưu</button></td>
-                                </tr>
-
-                                <!-- Row 4: Rejected -->
-                                <tr>
-                                    <td class="file-cell">
-                                        <svg class="file-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-                                        <span>ToaThuoc_KhangSinh_Hong.docx</span>
-                                    </td>
-                                    <td>Trần Thị B</td>
-                                    <td>25/05/2026</td>
-                                    <td class="pct-cell danger-text">82.4%</td>
-                                    <td><span class="status-pill red-pill">Bị Từ Chối</span></td>
-                                    <td><button class="btn btn-secondary btn-nav" disabled>Lỗi cấu trúc</button></td>
-                                </tr>
+                                {% empty %}
+                                <tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:40px;">Chưa có tài liệu nào.</td></tr>
+                                {% endfor %}
                             </tbody>
                         </table>
                     </div>
                 </div>
             </div>
 
-            <!-- ==========================================================
-                 TAB 3: MEDICINES DIRECTORY TAB
-                 ========================================================== -->
+            <!-- TAB 3: MEDICINES DIRECTORY -->
             <div class="db-tab-pane hidden" id="tab-medicines">
                 <div class="card glass-card medicines-dir-card">
                     <div class="medicines-header-actions">
                         <div class="left-box">
                             <h4 class="table-inner-title">Kho Dược phẩm Số hóa</h4>
-                            <p class="section-subtitle" style="text-align: left; font-size: 0.8rem;">Danh sách các loại thuốc đã được quét và nhập hệ thống y tế thành công.</p>
-                        </div>
-                        <div class="right-actions-download">
-                            <!-- Download simulated actions -->
-                            <div class="download-progress-container hidden" id="dl-progress-box">
-                                <span class="dl-status-text" id="dl-status-label">Đang nén dữ liệu...</span>
-                                <div class="dl-progress-bar"><div class="fill" id="dl-progress-fill" style="width: 0%"></div></div>
-                            </div>
-                            
-                            <button class="btn btn-primary" id="btn-export-excel">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px; height:16px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                                <span>Xuất file Excel</span>
-                            </button>
+                            <p class="section-subtitle" style="text-align:left;font-size:0.8rem;">Danh sách dược phẩm đã được quét và phê duyệt.</p>
                         </div>
                     </div>
-
-                    <div class="table-responsive-container" style="margin-top: 24px;">
+                    <div class="table-responsive-container" style="margin-top:24px;">
                         <table class="db-table" id="medicines-table">
                             <thead>
                                 <tr>
-                                    <th>Mã Định Danh</th>
                                     <th>Tên Biệt Dược</th>
-                                    <th>Hoạt Chất Phân Tích</th>
+                                    <th>Hoạt Chất</th>
                                     <th>Hàm Lượng</th>
                                     <th>Dạng Bào Chế</th>
-                                    <th>Số Đăng Ký</th>
                                     <th>Số Lô</th>
                                     <th>Hạn Sử Dụng</th>
+                                    <th>Trạng Thái</th>
                                 </tr>
                             </thead>
                             <tbody>
+                                {% for med in approved_medicines %}
                                 <tr>
-                                    <td class="mono-cell">MED-PARA-101</td>
-                                    <td class="bold-cell">Paracetamol Extra</td>
-                                    <td>Acetaminophen (Paracetamol)</td>
-                                    <td>500mg</td>
-                                    <td>Viên nén bao phim</td>
-                                    <td class="mono-cell">VD-21588-14</td>
-                                    <td class="mono-cell">LOT-PARA2026</td>
-                                    <td class="success-text">20/05/2029</td>
+                                    <td class="bold-cell">{{ med.trade_name }}</td>
+                                    <td>{{ med.active_ingredient }}</td>
+                                    <td>{{ med.strength }}</td>
+                                    <td>{{ med.dosage_form }}</td>
+                                    <td class="mono-cell">{{ med.batch_number }}</td>
+                                    <td class="success-text">{{ med.exp_date }}</td>
+                                    <td><span class="status-pill pill-approved">Đã duyệt</span></td>
                                 </tr>
-                                <tr>
-                                    <td class="mono-cell">MED-VAC-004</td>
-                                    <td class="bold-cell">BioFlu-TC</td>
-                                    <td>Kháng nguyên Virus Cúm bất hoạt</td>
-                                    <td>0.5ml / Liều</td>
-                                    <td>Hỗn dịch tiêm</td>
-                                    <td class="mono-cell">QLSP-1102-25</td>
-                                    <td class="mono-cell">LOT-VAC4082</td>
-                                    <td class="success-text">01/01/2028</td>
-                                </tr>
-                                <!-- Dynamic newly approved medicine row will insert here simulated -->
-                                <tr class="hidden" id="dynamic-row-amox">
-                                    <td class="mono-cell">MED-AMOX-892</td>
-                                    <td class="bold-cell" id="dyn-trade">Amoxipharm 250</td>
-                                    <td id="dyn-active">Amoxicillin Trihydrate</td>
-                                    <td id="dyn-strength">250mg</td>
-                                    <td id="dyn-dosage">Viên nang cứng</td>
-                                    <td class="mono-cell" id="dyn-reg">VD-18239-12</td>
-                                    <td class="mono-cell" id="dyn-batch">LOT-AMOX9925</td>
-                                    <td class="success-text" id="dyn-exp">12/03/2029</td>
-                                </tr>
+                                {% empty %}
+                                <tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:40px;">Chưa có dược phẩm nào được duyệt.</td></tr>
+                                {% endfor %}
                             </tbody>
                         </table>
                     </div>
                 </div>
             </div>
 
-            <!-- ==========================================================
-                 TAB 4: TEMPLATES CONFIG TAB
-                 ========================================================== -->
+            <!-- TAB 4: TEMPLATES CONFIG -->
             <div class="db-tab-pane hidden" id="tab-templates">
                 <div class="card glass-card templates-card">
-                    <h4 class="table-inner-title" style="margin-bottom: 12px;">Sơ đồ Bản đồ Ánh xạ (Field Mapping Schema)</h4>
-                    <p class="section-subtitle" style="text-align: left; font-size: 0.8rem; margin-bottom: 24px;">Hệ thống nhận diện cấu trúc file Word thông qua các thẻ HTML đã chuyển đổi để ánh xạ chính xác sang cơ sở dữ liệu.</p>
-                    
+                    <h4 class="table-inner-title" style="margin-bottom:12px;">Sơ đồ Bản đồ Ánh xạ (Field Mapping Schema)</h4>
+                    <p class="section-subtitle" style="text-align:left;font-size:0.8rem;margin-bottom:24px;">Hệ thống nhận diện cấu trúc file Word thông qua các thẻ HTML đã chuyển đổi để ánh xạ chính xác sang cơ sở dữ liệu.</p>
                     <div class="template-map-grid">
                         <div class="map-card glass-card">
                             <div class="map-card-header">
@@ -378,36 +264,12 @@
                                 <span class="label">DATABASE FIELDS</span>
                             </div>
                             <div class="map-rows">
-                                <div class="map-row">
-                                    <code class="node">&lt;td class="bold"&gt;Tên thuốc...&lt;/td&gt;</code>
-                                    <span class="line-dot">➔</span>
-                                    <code class="db-field">trade_name</code>
-                                </div>
-                                <div class="map-row">
-                                    <code class="node">&lt;p&gt;Hoạt chất chính: ...&lt;/p&gt;</code>
-                                    <span class="line-dot">➔</span>
-                                    <code class="db-field">active_ingredient</code>
-                                </div>
-                                <div class="map-row">
-                                    <code class="node">&lt;span&gt;Hàm lượng:...&lt;/span&gt;</code>
-                                    <span class="line-dot">➔</span>
-                                    <code class="db-field">strength</code>
-                                </div>
-                                <div class="map-row">
-                                    <code class="node">&lt;td&gt;Dạng bào chế:...&lt;/td&gt;</code>
-                                    <span class="line-dot">➔</span>
-                                    <code class="db-field">dosage_form</code>
-                                </div>
-                                <div class="map-row">
-                                    <code class="node">&lt;p&gt;Nhà sản xuất: ...&lt;/p&gt;</code>
-                                    <span class="line-dot">➔</span>
-                                    <code class="db-field">manufacturer</code>
-                                </div>
-                                <div class="map-row">
-                                    <code class="node">&lt;td&gt;Số lô:...&lt;/td&gt;</code>
-                                    <span class="line-dot">➔</span>
-                                    <code class="db-field">batch_number</code>
-                                </div>
+                                <div class="map-row"><code class="node">&lt;td class="bold"&gt;Tên thuốc...&lt;/td&gt;</code><span class="line-dot">➔</span><code class="db-field">trade_name</code></div>
+                                <div class="map-row"><code class="node">&lt;p&gt;Hoạt chất chính: ...&lt;/p&gt;</code><span class="line-dot">➔</span><code class="db-field">active_ingredient</code></div>
+                                <div class="map-row"><code class="node">&lt;span&gt;Hàm lượng:...&lt;/span&gt;</code><span class="line-dot">➔</span><code class="db-field">strength</code></div>
+                                <div class="map-row"><code class="node">&lt;td&gt;Dạng bào chế:...&lt;/td&gt;</code><span class="line-dot">➔</span><code class="db-field">dosage_form</code></div>
+                                <div class="map-row"><code class="node">&lt;p&gt;Nhà sản xuất: ...&lt;/p&gt;</code><span class="line-dot">➔</span><code class="db-field">manufacturer</code></div>
+                                <div class="map-row"><code class="node">&lt;td&gt;Số lô:...&lt;/td&gt;</code><span class="line-dot">➔</span><code class="db-field">batch_number</code></div>
                             </div>
                         </div>
                     </div>
@@ -417,113 +279,148 @@
     </main>
 </div>
 
-<!-- ==========================================================
-     SIDE-BY-SIDE AUDIT & PHARMA REVIEW MODAL
-     ========================================================== -->
-<div class="modal-overlay hidden" id="audit-modal" style="background: rgba(7, 10, 19, 0.9);">
-    <div class="modal-card audit-modal-card">
-        <div class="audit-modal-header">
-            <div class="header-left">
-                <span class="badge" style="margin-bottom: 0;">Phiếu Kiểm Duyệt Dược Phẩm</span>
-                <h3>Duyệt hồ sơ trích xuất dữ liệu</h3>
-            </div>
-            <button class="btn-remove-file" id="btn-close-audit-modal" style="background: rgba(255,255,255,0.05); color: #94a3b8;">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-            </button>
-        </div>
-
-        <div class="audit-modal-body">
-            <!-- Left Column: Source Document Word Preview -->
-            <div class="audit-side-col col-left">
-                <div class="side-col-header">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="doc-icon" style="width:16px; height:16px; color:#2563eb;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-                    <span>Văn bản Word gốc (Convert HTML)</span>
-                </div>
-                <div class="document-preview-paper" style="max-height: 400px; height: 400px;">
-                    <div class="paper-content-simulate" style="font-size: 0.72rem; color: #1e293b;">
-                        <div class="sim-paragraph p-title" style="color: #0f172a;">PHIẾU KIỂM NGHIỆM CHẤT LƯỢNG</div>
-                        <div class="sim-paragraph p-bold" style="color: #0f172a;">Tên thương mại: Amoxipharm 250</div>
-                        <div class="sim-paragraph" style="color: #334155;"><strong>Hoạt chất chính</strong>: Amoxicillin Trihydrate tương đương Amoxicillin khan 250mg. Tá dược: Tinh bột ngô, Magnesi stearat vừa đủ 1 viên nang.</div>
-                        <div class="sim-paragraph" style="color: #334155;"><strong>Nhà sản xuất</strong>: Tổng công ty Dược Việt Nam (Vinapharm). Địa chỉ: Khu công nghiệp VSIP, Bình Dương.</div>
-                        <div class="sim-paragraph" style="color: #334155;"><strong>Số đăng ký lưu hành</strong>: VD-18239-12. <strong>Số lô sản xuất</strong>: LOT-AMOX9925. <strong>Ngày sản xuất</strong>: 12/03/2026. <strong>Hạn sử dụng</strong>: 36 tháng kể từ ngày sản xuất (HSD: 12/03/2029).</div>
-                        <div class="sim-paragraph" style="color: #334155;"><strong>Chỉ định</strong>: Các nhiễm khuẩn do vi khuẩn nhạy cảm gây ra ở đường hô hấp trên, đường hô hấp dưới, da và mô mềm, đường tiết niệu không biến chứng.</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Right Column: Extracted Destination HTML Form -->
-            <div class="audit-side-col col-right">
-                <div class="side-col-header">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="doc-icon" style="width: 16px; height:16px; color:var(--success);"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                    <span>Biểu mẫu Dược phẩm đích (Có thể sửa)</span>
-                </div>
-                
-                <form id="audit-correction-form" class="medical-form" style="max-height: 400px; overflow-y: auto; padding: 10px 4px;">
-                    <div class="form-grid-2">
-                        <div class="form-group">
-                            <label for="aud-trade_name" class="form-label">Tên Thương Mại</label>
-                            <input type="text" id="aud-trade_name" class="form-input filled-highlight" value="Amoxipharm 250">
-                        </div>
-                        <div class="form-group">
-                            <label for="aud-active_ingredient" class="form-label">Hoạt Chất Chính</label>
-                            <input type="text" id="aud-active_ingredient" class="form-input filled-highlight" value="Amoxicillin Trihydrate">
-                        </div>
-                    </div>
-
-                    <div class="form-grid-2">
-                        <div class="form-group">
-                            <label for="aud-strength" class="form-label">Hàm Lượng / Nồng Độ</label>
-                            <input type="text" id="aud-strength" class="form-input filled-highlight" value="250mg">
-                        </div>
-                        <div class="form-group">
-                            <label for="aud-dosage_form" class="form-label">Dạng Bào Chế</label>
-                            <input type="text" id="aud-dosage_form" class="form-input filled-highlight" value="Viên nang cứng">
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="aud-manufacturer" class="form-label">Nhà Sản Xuất</label>
-                        <input type="text" id="aud-manufacturer" class="form-input filled-highlight" value="Tổng công ty Dược Việt Nam (Vinapharm)">
-                    </div>
-
-                    <div class="form-grid-2">
-                        <div class="form-group">
-                            <label for="aud-batch_number" class="form-label">Số Lô Sản Xuất</label>
-                            <input type="text" id="aud-batch_number" class="form-input filled-highlight" value="LOT-AMOX9925">
-                        </div>
-                        <div class="form-group">
-                            <label for="aud-registration_number" class="form-label">Số Đăng Ký Lưu Hành</label>
-                            <input type="text" id="aud-registration_number" class="form-input filled-highlight" value="VD-18239-12">
-                        </div>
-                    </div>
-
-                    <div class="form-grid-2">
-                        <div class="form-group">
-                            <label for="aud-mfg_date" class="form-label">Ngày Sản Xuất</label>
-                            <input type="text" id="aud-mfg_date" class="form-input filled-highlight" value="12/03/2026">
-                        </div>
-                        <div class="form-group">
-                            <label for="aud-exp_date" class="form-label">Hạn Sử Dụng</label>
-                            <input type="text" id="aud-exp_date" class="form-input filled-highlight" value="12/03/2029">
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="aud-indications" class="form-label">Chỉ Định Điều Trị</label>
-                        <textarea id="aud-indications" class="form-input form-textarea filled-highlight">Các nhiễm khuẩn ở đường hô hấp trên và dưới, da và mô mềm, đường tiết niệu do vi khuẩn nhạy cảm.</textarea>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-        <div class="audit-modal-footer">
-            <button class="btn btn-secondary" id="btn-audit-reject" style="background: rgba(244, 63, 94, 0.05); color: var(--danger); border-color: rgba(244, 63, 94, 0.2);">
-                <span>Từ Chối Phê Duyệt</span>
-            </button>
-            <button class="btn btn-primary" id="btn-audit-approve" style="background: linear-gradient(135deg, var(--success) 0%, #059669 100%); box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);">
-                <span>Duyệt & Lưu Vào Kho Thuốc</span>
-            </button>
+<!-- APPROVE CONFIRMATION MODAL -->
+<div class="modal-overlay hidden" id="confirm-modal" style="background:rgba(7,10,19,0.8);backdrop-filter:blur(8px);z-index:200;">
+    <div class="modal-card" style="max-width:400px;padding:32px;">
+        <h3 style="font-family:var(--font-heading);font-size:1.3rem;font-weight:700;margin-bottom:12px;">Xác nhận</h3>
+        <p id="confirm-modal-text" style="color:var(--text-muted);font-size:0.92rem;margin-bottom:24px;"></p>
+        <div style="display:flex;gap:12px;justify-content:flex-end;">
+            <button class="btn btn-secondary" id="btn-confirm-cancel" style="padding:8px 16px;">Hủy</button>
+            <button class="btn btn-primary" id="btn-confirm-ok" style="padding:8px 16px;">Xác nhận</button>
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Live date
+    const liveDateEl = document.getElementById('db-live-date');
+    if (liveDateEl) {
+        const opts = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        liveDateEl.textContent = new Date().toLocaleDateString('vi-VN', opts);
+    }
+
+    // Tab switching
+    const menuItems = document.querySelectorAll('.db-menu-item');
+    const panes = document.querySelectorAll('.db-tab-pane');
+    const tabTitle = document.getElementById('db-tab-title');
+    menuItems.forEach(item => {
+        item.addEventListener('click', () => {
+            const targetId = item.getAttribute('data-tab');
+            menuItems.forEach(m => m.classList.remove('active'));
+            item.classList.add('active');
+            panes.forEach(p => { p.classList.add('hidden'); p.classList.remove('active'); });
+            const target = document.getElementById(targetId);
+            if (target) { target.classList.remove('hidden'); target.classList.add('active'); }
+            if (tabTitle) {
+                const spans = item.querySelectorAll('span');
+                tabTitle.textContent = spans.length > 0 ? spans[0].textContent : 'Dashboard';
+            }
+        });
+    });
+
+    // Search filter
+    const searchInput = document.getElementById('table-search-input');
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            const q = this.value.toLowerCase();
+            document.querySelectorAll('#scans-history-table tbody tr').forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(q) ? '' : 'none';
+            });
+        });
+    }
+
+    // Approve / Reject via AJAX
+    function getCookie(name) {
+        let c = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+        return c ? c.pop() : '';
+    }
+
+    function showConfirm(msg, callback) {
+        const modal = document.getElementById('confirm-modal');
+        document.getElementById('confirm-modal-text').textContent = msg;
+        modal.classList.remove('hidden');
+        const okBtn = document.getElementById('btn-confirm-ok');
+        const cancelBtn = document.getElementById('btn-confirm-cancel');
+        function cleanup() {
+            modal.classList.add('hidden');
+            okBtn.removeEventListener('click', handleOk);
+            cancelBtn.removeEventListener('click', handleCancel);
+        }
+        function handleOk() { cleanup(); callback(true); }
+        function handleCancel() { cleanup(); callback(false); }
+        okBtn.addEventListener('click', handleOk);
+        cancelBtn.addEventListener('click', handleCancel);
+        modal.addEventListener('click', function(e) { if (e.target === modal) { cleanup(); callback(false); } }, { once: true });
+    }
+
+    document.querySelectorAll('.btn-approve-doc').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const docId = this.getAttribute('data-doc-id');
+            showConfirm('Xác nhận phê duyệt tài liệu này?', function(ok) {
+                if (!ok) return;
+                fetch('/user/dashboard/approve/' + docId + '/', {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': getCookie('csrftoken'), 'Content-Type': 'application/x-www-form-urlencoded' }
+                }).then(r => r.json()).then(data => {
+                    if (data.success) {
+                        const badge = document.getElementById('badge-' + docId);
+                        if (badge) { badge.textContent = 'Đã duyệt'; badge.className = 'status-pill pill-approved'; }
+                        const row = btn.closest('tr');
+                        if (row) { row.classList.remove('table-row-pending'); }
+                        btn.textContent = 'Đã duyệt'; btn.className = 'btn btn-secondary btn-nav'; btn.disabled = true;
+                        const rejectBtn = row?.querySelector('.btn-reject-doc');
+                        if (rejectBtn) { rejectBtn.remove(); }
+                        // Update KPI counts
+                        fetch('/user/dashboard/stats/').then(r => r.json()).then(s => {
+                            document.getElementById('kpi-total').textContent = s.total_scans;
+                            document.getElementById('kpi-pending').textContent = s.pending;
+                            const bubble = document.getElementById('side-pending-bubble');
+                            if (bubble) {
+                                if (s.pending > 0) bubble.textContent = s.pending;
+                                else bubble.style.display = 'none';
+                            }
+                            document.getElementById('kpi-approved').textContent = s.approved;
+                        });
+                    }
+                });
+            });
+        });
+    });
+
+    document.querySelectorAll('.btn-reject-doc').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const docId = this.getAttribute('data-doc-id');
+            showConfirm('Xác nhận từ chối tài liệu này?', function(ok) {
+                if (!ok) return;
+                fetch('/user/dashboard/reject/' + docId + '/', {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': getCookie('csrftoken'), 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: 'notes='
+                }).then(r => r.json()).then(data => {
+                    if (data.success) {
+                        const badge = document.getElementById('badge-' + docId);
+                        if (badge) { badge.textContent = 'Từ chối'; badge.className = 'status-pill pill-rejected'; }
+                        const row = btn.closest('tr');
+                        if (row) { row.classList.remove('table-row-pending'); }
+                        btn.textContent = 'Đã từ chối'; btn.className = 'btn btn-secondary btn-nav'; btn.disabled = true;
+                        const approveBtn = row?.querySelector('.btn-approve-doc');
+                        if (approveBtn) { approveBtn.remove(); }
+                        fetch('/user/dashboard/stats/').then(r => r.json()).then(s => {
+                            document.getElementById('kpi-total').textContent = s.total_scans;
+                            document.getElementById('kpi-pending').textContent = s.pending;
+                            const bubble = document.getElementById('side-pending-bubble');
+                            if (bubble) {
+                                if (s.pending > 0) bubble.textContent = s.pending;
+                                else bubble.style.display = 'none';
+                            }
+                        });
+                    }
+                });
+            });
+        });
+    });
+});
+</script>
 {% endblock %}

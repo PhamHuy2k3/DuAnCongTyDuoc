@@ -5,34 +5,24 @@
 
 {% block content %}
 <style>
-/* 1. Cấu hình cho toàn bộ khối chữ logo */
 .auth-logo-center .logo-text {
     display: inline-block;
     transition: letter-spacing 0.3s ease-in-out !important;
 }
 
-/* 2. Cấu hình riêng cho thẻ span chứa chữ 'inter' */
 .auth-logo-center .logo-text > span {
     display: inline-block !important;
     transition: transform 0.3s ease-in-out !important;
 }
 
-/* ===================================================
-   KHI HOVER: ĐẨY DRP SANG TRÁI, ĐẨY INTER SANG PHẢI
-   =================================================== */
-
 .auth-logo-center:hover .logo-text {
-    /* Đẩy toàn bộ các ký tự (bao gồm DRP) giãn cách nhau ra, DRP tự động lùi sang trái */
     letter-spacing: 10px !important; 
 }
 
 .auth-logo-center:hover .logo-text > span {
-    /* Chữ inter bị dính hiệu ứng letter-spacing của cha sẽ bị thưa chữ, 
-       ta dùng transform để đẩy mạnh nó sang phải và kéo khít chữ 'inter' lại như cũ */
     letter-spacing: normal !important;
     transform: translateX(15px) !important; 
 }
-/* Tinh chỉnh Input và Nút mắt */
 .input-wrapper { position: relative; display: flex; align-items: center; }
 
 .toggle-password-btn {
@@ -67,7 +57,6 @@
                 <p class="auth-subtitle">Nhập tài khoản của bạn để truy cập hệ thống</p>
             </div>
 
-            <!-- 1. Sửa thuộc tính form: Đổi thành POST, xóa preventDefault -->
 <form id="login-form" class="auth-form" method="POST">
     {% csrf_token %} 
 
@@ -116,10 +105,10 @@
     toggleBtn.addEventListener('click', function() {
         if (passwordInput.type === 'password') {
             passwordInput.type = 'text';
-            toggleBtn.style.color = '#3b82f6'; // Đổi màu khi hiện mật khẩu
+            toggleBtn.style.color = '#3b82f6';
         } else {
             passwordInput.type = 'password';
-            toggleBtn.style.color = '#94a3b8'; // Trả về màu cũ
+            toggleBtn.style.color = '#94a3b8';
         }
     });
 </script>
