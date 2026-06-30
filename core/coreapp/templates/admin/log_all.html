@@ -1,0 +1,44 @@
+{% extends 'admin/admin.html' %}
+{% load static %}
+
+{% block title %}Tổng Tất Cả Lịch Sử{% endblock %}
+
+{% block page_title %}
+<h2 id="db-tab-title">📅 Tổng tất cả lịch sử nhật ký</h2>
+{% endblock %}
+
+{% block logs_content %}
+<div style="margin-top: 10px;">
+    <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 20px;">Dưới đây là danh sách lịch sử hoạt động được phân loại theo từng ngày. Nhấp vào bất kỳ ngày nào để xem chi tiết hoạt động trong tab mới.</p>
+    
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px;">
+        {% for item in logs_by_date %}
+        <a href="{% url 'log_detail' item.date_only|date:'Y-m-d' %}" target="_blank" 
+           style="text-decoration: none; display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; background: #1e293b; border: 1px solid #334155; border-radius: 8px; color: white; transition: all 0.2s ease;"
+           onmouseover="this.style.background='#273549'; this.style.borderColor='#3b82f6'; this.style.transform='translateY(-2px)';" 
+           onmouseout="this.style.background='#1e293b'; this.style.borderColor='#334155'; this.style.transform='translateY(0)';">
+            
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 1.5rem;">📅</span>
+                <div>
+                    <div style="font-weight: 600; font-size: 1rem; color: #f8fafc;">
+                        {{ item.date_only|date:"d / m / Y" }}
+                    </div>
+                    <div style="font-size: 0.8rem; color: #94a3b8; margin-top: 2px;">
+                        Thứ {{ item.date_only|date:"l" }}
+                    </div>
+                </div>
+            </div>
+            
+            <span style="background: rgba(59, 130, 246, 0.2); color: #3b82f6; padding: 4px 10px; border-radius: 9999px; font-size: 0.8rem; font-weight: 600;">
+                {{ item.total_logs }} logs
+            </span>
+        </a>
+        {% empty %}
+        <div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #64748b; background: #1e293b; border-radius: 8px; border: 1px dashed #334155;">
+            📁 Chưa có bất kỳ lịch sử hoạt động nào được ghi nhận.
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

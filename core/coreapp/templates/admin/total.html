@@ -1,0 +1,122 @@
+{% extends 'admin/admin.html' %}
+{% load static %}
+{% block page_title %} <h2 id="db-tab-title"> Tổng Tài khoản</h2> {% endblock %}
+{% block page_total %}
+<link rel="stylesheet" href="{% static 'coreapp/css/filter.css' %}">
+<form method="GET" action="" id="main-search-form">
+    <div style="flex: 1; position: relative; display: flex; align-items: center;">
+    <input type="text" id="search-input" name="q" value="{{ request.GET.q }}" placeholder="Tìm kiếm..." 
+           style="width: 100%; padding: 10px; padding-right: 35px; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: white;">
+    
+    <button type="button" id="clear-search" style="position: absolute; right: 10px; background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 16px;">&times;</button>
+</div>
+    <button type="button" onclick="openFilterModal()" style="padding: 10px 15px; border-radius: 6px; border: 1px solid #334155; background: #1e293b; color: white; cursor: pointer;">🔍 Lọc</button>
+    
+    <div class="mic-container">
+    <button type="button" class="micoff" id="btn-mic">🎙️</button>
+    <div id="siri-orb-container" class="hidden" onclick="stopSiriManually()" style="cursor: pointer;">
+        <div class="siri-orb"></div>
+    </div>
+</div>
+
+    <button type="submit" style="padding: 10px 20px; border-radius: 6px; border: none; background: #22c55e; color: white; cursor: pointer;">Tìm</button>
+</form>
+    <div class="card glass-card" style="padding: 1px; background: rgba(255,255,255,0.01); border-radius: 8px;">
+        <table class="db-table">
+            <thead>
+                <tr>
+                    <th class="mobile-hide">Tên tài khoản</th>
+                    <th class="mobile-hide">Email</th>
+                    <th class="mobile-show">Họ tên</th>
+                    <th class="mobile-hide">Chức vụ</th>
+                    <th class="mobile-hide">Trạng thái</th>
+                    <th class="mobile-hide">Mật khẩu</th>
+                    <th style="text-align: right;" class="mobile-show">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in all_users %}
+                <tr>
+                    <td class="mobile-hide"><strong>{{ u.username }}</strong></td>
+<td class="mobile-hide">
+    <div style="display: flex; align-items: center; gap: 8px;">
+        <span>{{ u.email }}</span>
+        <button type="button" class="btn-copy-table" 
+                onclick="copyToClipboard('{{ u.email }}', this)" title="Copy Email">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+        </button>
+    </div>
+</td>
+                    <td class="mobile-show">{% if u.first_name or u.last_name %}{{ u.last_name }} {{ u.first_name }}{% else %}- Chưa cập nhật -{% endif %}</td>
+                    <td class="mobile-hide">{{ u.get_role_display }}</td>
+                    <td class="mobile-hide">{% if u.is_active %}<span class="badge badge-success">Đang hoạt động</span>{% else %}<span class="badge badge-danger">Đang khóa</span>{% endif %}</td>
+<td style="padding: 10px; color: #48bb78; font-weight: bold;" class="mobile-hide">
+    <div style="display: flex; align-items: center; gap: 8px;">
+        {% if u.is_password_changed %}
+            <span style="color: #64748b; font-style: italic; font-weight: normal;">Người dùng đã đổi</span>
+        {% else %}
+            <span>{{ u.plain_password_temp|default:"---" }}</span>
+            {% if u.plain_password_temp %}
+            <button type="button" class="btn-copy-table" 
+                    onclick="copyToClipboard('{{ u.plain_password_temp }}', this)" title="Copy Mật khẩu">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+            </button>
+            {% endif %}
+        {% endif %}
+    </div>
+</td>
+                 <td style="text-align: right;" class="mobile-show">
+                        <div class="btn-group-action" style="justify-content: flex-end; display: flex; gap: 5px; position: relative; z-index: 10;">
+    <button type="button" class="btn-sm btn-reset" onclick="openResetModal('{{ u.username }}')">🔄 Reset</button>
+    
+    <button type="button" class="btn-sm {% if u.is_active %}btn-lock{% else %}btn-unlock{% endif %}" 
+            onclick="openLockModal('{{ u.username }}', '{% if u.is_active %}lock{% else %}unlock{% endif %}')">
+        {% if u.is_active %}🔒 Khóa{% else %}🔓 Mở{% endif %}
+    </button>
+    
+<button type="button" class="btn-sm btn-view" 
+        onclick="openViewModal(this)"
+        data-username="{{ u.username }}"
+        data-email="{{ u.email }}"
+        data-fullname="{{ u.get_full_name }}"
+        data-role="{{ u.role }}"
+        data-birth="{{ u.birth_date|date:'d/m/Y' }}"
+        data-phone="{{ u.phone_number|default:'---' }}"
+        data-password="{{ u.plain_password_temp|default:'---' }}"
+        data-password-changed="{{ u.is_password_changed }}"
+        data-active="{{ u.is_active }}"> 👁️ Xem
+</button>
+<button type="button" class="btn-sm btn-delete js-delete" 
+        data-username="{{ u.username }}" 
+        style="background: #ef4444; color: white; border: none; cursor: pointer;">
+    🗑️ Xóa
+</button>
+</div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7" style="text-align: center; color: #64748b;">Chưa có tài khoản nào.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: center;">
+    {% if all_users.has_previous %}
+        <a href="?page={{ all_users.previous_page_number }}" style="color: white;">Trước</a>
+    {% endif %}
+
+    <span style="color: #64748b;">Trang {{ all_users.number }} / {{ all_users.paginator.num_pages }}</span>
+
+    {% if all_users.has_next %}
+        <a href="?page={{ all_users.next_page_number }}" style="color: white;">Sau</a>
+    {% endif %}
+</div>
+<script src="{% static 'coreapp/js/filter.js' %}"></script>
+{% endblock %}
+

@@ -11,7 +11,7 @@ urlpatterns = [
     path('login/', core_views.login_view, name='login'),
     path('logout/', core_views.logout_view, name='logout'),
     path('', include('coreapp.urls')),
-    path('user/', include('user.urls')),
+    path('app/', include('user.urls')),
     path('coa/', user_views.coa_view, name='coa_report'),
 ]
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

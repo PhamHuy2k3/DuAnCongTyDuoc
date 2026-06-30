@@ -270,77 +270,133 @@
 }
 
 .db-sidebar {
-    width: 260px;
-    height: 100vh;
+    display: flex;
+    flex-direction: column; /* Quan trọng: sắp xếp theo cột */
+    height: 100vh;          /* Chiều cao chiếm hết màn hình */
     background: #0f172a;
-    display: flex;
-    flex-direction: column;
+    width: 280px;
     flex-shrink: 0;
-    transition: transform 0.3s ease;
-    z-index: 1000;
+    position: relative;     /* Đảm bảo sidebar đứng yên */
 }
-/* --- Cấu trúc cơ bản --- */
-
-/* --- Sidebar Mobile (Cực kỳ quan trọng) --- */
-@media (max-width: 768px) {
-    .db-sidebar {
-        position: fixed;
-        left: -260px; /* Ẩn đi */
-        top: 0; width: 80px; height: 100%;
-        z-index: 1000;
-        transition: 0.3s;
-        background: #0f172a;
-    }
-    .db-sidebar.active { left: 0; } /* Hiện ra */
-
-    /* Overlay mờ giống Facebook */
-    .sidebar-overlay {
-        display: none; position: fixed; top: 0; left: 0;
-        width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 999;
-    }
-    .sidebar-overlay.active { display: block; }
-
-    /* Nút menu */
-    .btn-menu-mobile {
-        z-index: 998; padding: 10px; color: white; border: none;
-    }
-}
-/* Mặc định ẩn nút trên máy tính */
+/* 1. Mặc định ẩn hoàn toàn nút Menu tròn lơ lửng trên mọi thiết bị */
 .btn-menu-mobile {
-    display: none;
-    z-index: 2000; /* Luôn nằm trên cùng */
+    display: none !important;
 }
 
-/* Chỉ hiện trên Mobile */
-@media (max-width: 768px) {
+/* 2. Cấu hình ép Sidebar luôn hiện rõ chữ trên iPad và Mobile (Dưới 1024px) */
+@media (max-width: 1024px) {
+    /* 1. Ép khung bao chính về block để nội dung chính tràn full 100% màn hình */
+    .dashboard-wrapper {
+        display: block !important;
+        position: relative !important;
+        width: 100% !important;
+        height: 100vh !important;
+        overflow: hidden !important;
+    }
+
+    /* 2. Cấu hình Sidebar ẩn hoàn toàn sang bên trái cánh gà (Chờ được gọi) */
+    .db-sidebar {
+        position: fixed !important;
+        top: 0 !important;
+        left: -280px !important; /* Đẩy hoàn toàn ra khỏi màn hình */
+        width: 280px !important;
+        min-width: 280px !important;
+        height: 100vh !important;
+        z-index: 3000 !important; /* Nằm trên cùng tuyệt đối */
+        transition: left 0.3s ease-in-out !important; /* Hiệu ứng trượt mượt */
+        display: flex !important;
+        flex-direction: column !important;
+        box-shadow: 5px 0 25px rgba(0, 0, 0, 0.5) !important;
+    }
+
+    /* Class kích hoạt khi bấm nút: Sidebar trượt ra */
+    .db-sidebar.active {
+        left: 0 !important;
+    }
+.db-sidebar-menu {
+    flex: 1;                /* Quan trọng: menu sẽ giãn ra chiếm mọi không gian còn trống */
+    overflow-y: auto;       /* Cuộn nội dung nếu menu quá dài */
+}
+.db-sidebar-footer {
+    flex-shrink: 0;         /* Footer không được phép co lại */
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 16px;
+    background: #0f172a;
+    width: 100%;            /* Đảm bảo full chiều rộng */
+}
+    /* Đảm bảo toàn bộ chữ, icon, logo trong Sidebar hiện đầy đủ, rõ ràng */
+    .db-sidebar-menu span, 
+    .db-menu-item span,
+    .db-log-subitem span,
+    .logo-text,
+    .db-role-badge {
+        display: inline !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+    }
+
+    /* 3. Vùng nội dung chính (Bảng, bộ lọc) chiếm trọn 100% không gian màn hình */
+    .db-main, main.main-content {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin-left: 0 !important;
+        flex: none !important;
+        height: 100vh !important;
+        overflow-y: auto !important;
+        display: block !important;
+    }
+
+    /* 4. Lớp phủ mờ nền phía sau khi mở Menu (Overlay) */
+    .sidebar-overlay {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        background: rgba(0, 0, 0, 0.6) !important;
+        backdrop-filter: blur(4px) !important; /* Hiệu ứng kính mờ */
+        z-index: 2999 !important; /* Nằm ngay dưới Sidebar */
+        display: none !important;
+        opacity: 0;
+        transition: opacity 0.3s ease !important;
+    }
+
+    /* Hiện lớp phủ mờ khi Sidebar hoạt động */
+    .sidebar-overlay.active {
+        display: block !important;
+        opacity: 1 !important;
+    }
+
+    /* 5. Nút bấm Menu hình tròn lơ lửng (Kính mờ sang chảnh) */
     .btn-menu-mobile {
- /* Các thuộc tính cũ */
-    display: block;
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-    border: none;
-    cursor: pointer;
-    z-index: 2000;
-    
-    /* Cấu trúc hiệu ứng kính lỏng */
-    background: rgba(59, 131, 246, 0.2); /* Màu xanh nhẹ, độ trong suốt 0.2 */
-    backdrop-filter: blur(10px);        /* Hiệu ứng làm mờ nền phía sau */
-    -webkit-backdrop-filter: blur(10px); /* Hỗ trợ Safari/iOS */
-    border: 1px solid rgba(255, 255, 255, 0.2); /* Viền sáng mỏng tạo độ nổi */
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);  /* Đổ bóng nhẹ */
-    
-    /* Căn giữa icon */
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-size: 30px;
+        display: flex !important; /* Hiện lại nút trên mobile */
+        position: fixed !important;
+        bottom: 30px !important; /* Đặt ở góc dưới bên phải để tiện bấm */
+        right: 20px !important;
+        width: 56px !important;
+        height: 56px !important;
+        border-radius: 50% !important;
+        z-index: 2900 !important;
+        background: rgba(59, 130, 246, 0.75) !important; /* Màu xanh trong suốt nhẹ */
+        backdrop-filter: blur(10px) !important;
+        -webkit-backdrop-filter: blur(10px) !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3) !important;
+        align-items: center !important;
+        justify-content: center !important;
+        color: white !important;
+        font-size: 26px !important;
+        cursor: pointer !important;
+        transition: transform 0.1s, background 0.2s !important;
+    }
+
+    .btn-menu-mobile:hover {
+        background: rgba(59, 130, 246, 0.9) !important;
     }
 }
+
+/* 3. Tinh chỉnh riêng cho màn hình điện thoại rất nhỏ (Dưới 480px) */
+
 .btn-menu-mobile:hover {
     background: rgba(59, 131, 246, 0.4);
     box-shadow: 0 6px 20px rgba(59, 131, 246, 0.3);
@@ -351,25 +407,98 @@
 }
 
 @media (max-width: 768px) {
+    /* Định dạng lại nhóm nút thao tác trong bảng thành dạng Grid 2 cột cho gọn */
     .btn-group-action {
-        display: grid !important; /* Dùng Grid thay vì Flex */
-        grid-template-columns: 1fr 1fr; /* Chia làm 2 cột bằng nhau */
-        gap: 8px !important; /* Khoảng cách giữa các ô */
-        margin-top: 10px;
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 6px !important;
+        margin-top: 6px !important;
+        justify-content: content !important;
     }
 
-    /* Đảm bảo các nút chiếm hết chiều rộng của ô */
     .btn-group-action .btn-sm {
         width: 100% !important;
-        padding: 12px 5px !important; /* Tăng padding để dễ bấm */
-        font-size: 13px !important;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        border-radius: 6px;
+        padding: 10px 4px !important;
+        font-size: 11px !important;
+        display: inline-flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+        border-radius: 6px !important;
     }
 }
 
-.hidden {
-    display: none !important;
+/* Định dạng chung cho nhóm menu Lịch sử */
+    .db-log-section {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+    }
+
+    /* Tiêu đề chính "Lịch sử Hoạt động" giữ nguyên cấu trúc icon và text của bạn nhưng đổi màu tinh tế hơn */
+    .db-log-title-wrapper {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 16px;
+        color: #64748b; /* Màu text xám nhẹ sang trọng */
+        font-size: 0.8rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-top: 10px;
+    }
+
+    /* Vùng chứa các mục con thụt lề vào trong một chút */
+    .db-log-submenu-list {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding: 0 12px;
+    }
+
+    /* Thẻ liên kết của mục con - Có cấu trúc giống y hệt .db-menu-item cũ để kế thừa hover mượt */
+    .db-log-subitem {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 16px;
+        color: #94a3b8;
+        font-size: 0.9rem;
+        text-decoration: none;
+        border-radius: 8px;
+        transition: all 0.2s ease-in-out;
+    }
+
+    /* Hiệu ứng hover sáng nhẹ nền và chuyển chữ sang trắng giống menu chính */
+    .db-log-subitem:hover {
+        color: #ffffff;
+        background: rgba(255, 255, 255, 0.05);
+    }
+
+    /* Căn chỉnh icon emoji nhỏ nhắn, không bị lệch hàng với text */
+    .db-log-subitem-icon {
+        font-size: 1rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 20px;
+    }
+
+#log-submenu-container {
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-in-out, opacity 0.2s ease;
+    display: flex; 
+    flex-direction: column;
+}
+
+/* Khi mở */
+#log-submenu-container.is-open {
+    max-height: 200px;
+    opacity: 1;
+}
+
+.rotate-arrow {
+    transform: rotate(90deg) !important;
 }

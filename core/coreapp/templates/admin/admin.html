@@ -5,17 +5,19 @@
 
 {% block extra_head %}
 <link rel="stylesheet" href="{% static 'coreapp/css/admin.css' %}">
+
 {% endblock %}
 
 {% block content %}
+
 <button class="btn-menu-mobile" onclick="toggleSidebar()" 
                     style="font-size: 30px;"
                     >☰</button>
-<div class="dashboard-wrapper w-full">    
+<div class="dashboard-wrapper">    
     <div class="sidebar-overlay" onclick="toggleSidebar()"></div>
     <aside class="db-sidebar">
         <div class="db-sidebar-brand">
-            <a href="{% url 'home' %}" class="logo auth-logo-center">
+            <a href="{% url 'total' %}" class="logo auth-logo-center">
                 <span class="logo-text">DRP<span>inter</span></span>
             </a>
             <span class="db-role-badge">ADMIN PANEL</span>
@@ -27,27 +29,48 @@
     .mobile-menu-toggle { display: none; padding: 10px; background: #3b83f600; color: white; border: none; ;}
     @media (max-width: 768px) { .mobile-menu-toggle { display: block; } }
 </style>
-            <button class="db-menu-item active" data-tab="tab-all">
+
+            <a href="{% url 'total' %}" class="db-menu-item" data-tab="tab-all">
         <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
         <span>Tổng tài khoản</span>
-    </button>
-
-    <button class="db-menu-item" data-tab="tab-user">
-        <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+            </a>
+    <a href="{% url 'user' %}" class="db-menu-item" data-tab="tab-user">
+         <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
         <span>Tài khoản Người dùng</span>
-    </button>
-    
-    <button class="db-menu-item" data-tab="tab-admin">
+    </a>    
+    <a href="{% url 'adminqt' %}" class="db-menu-item" data-tab="tab-admin">
         <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
         <span>Tài khoản Quản trị</span>
-    </button>
-        </nav>
+    </a>
 
-        <div class="db-sidebar-footer">
+ <div style="display: flex; flex-direction: column; width: 100%; ">    
+    <div onclick="toggleLogSubmenu()" style="display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; color: #64748b; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; cursor: pointer; user-select: none;" onmouseover="this.style.color='#94a3b8'" onmouseout="this.style.color='#64748b'">
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
+                <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <span>Nhật ký hệ thống</span>
+        </div>
+        <span id="log-arrow" style="font-size: 0.6rem; transition: transform 0.2s ease; transform: rotate(0deg);">▶</span>
+    </div>
+    
+    <div id="log-submenu-container" style="display: flex; flex-direction: column !important; gap: 6px; padding: 0 12px; width: 100%;">
+        
+        <a href="{% url 'log_today' %}" style="display: flex !important; align-items: center; gap: 12px; padding: 10px 16px; color: #94a3b8; font-size: 0.9rem; text-decoration: none; border-radius: 8px; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.05)'; this.style.color='#fff'" onmouseout="this.style.background='transparent'; this.style.color='#94a3b8'">
+            <span>Hoạt động hôm nay</span>
+        </a>
+        
+        <a href="{% url 'log_all' %}" style="display: flex !important; align-items: center; gap: 12px; padding: 10px 16px; color: #94a3b8; font-size: 0.9rem; text-decoration: none; border-radius: 8px; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.05)'; this.style.color='#fff'" onmouseout="this.style.background='transparent'; this.style.color='#94a3b8'">
+            <span>Tổng tất cả lịch sử </span>
+        </a>
+        
+    </div>
+</div>       
+        </nav>
+ <div class="db-sidebar-footer">
             <div class="user-profile-flex">
-                <div class="avatar">DS</div>
                 <div class="user-info">
-                    <span class="user-name">{{ user.username }}</span>
+                    <span class="user-name text-light">{{ user.username }}</span>
                     <span class="user-role">Kiểm duyệt viên Hệ Thống</span>
                 </div>
             </div>
@@ -56,13 +79,14 @@
                 <span>Đăng xuất</span>
             </a>
         </div>
+
     </aside>
 
     <main class="db-main">
         <header class="db-navbar">
-            <div class="db-nav-left">
-                
-                <h2 id="db-tab-title"> Tổng quan Hệ thống</h2>
+            <div class="db-nav-left text-light">
+                {% block page_title %}
+                {% endblock %}
             </div>
             <div class="db-nav-right">
                 <div class="db-date-today" id="db-live-date">Thứ Năm, 28 Tháng 5, 2026</div>
@@ -81,7 +105,7 @@
         <h3 style="margin-bottom: 4px; color: #fff;">Cấp phát tài khoản nghiệp vụ</h3>
         <p style="color: #64748b; font-size: 0.85rem; margin-bottom: 16px;">Tạo tài khoản phân quyền trực tiếp cho nhân sự phòng thí nghiệm và quản lý chất lượng.</p>
         
-        <form method="POST" action="" class="quick-create-form">
+        <form method="POST" action="{% url 'admin_dashboard' %}" class="quick-create-form">
             {% csrf_token %}
             <input type="hidden" name="action_type" value="create_user">
             <div class="form-group">
@@ -119,251 +143,14 @@
 
 <input type="hidden" id="csrf-token" value="{{ csrf_token }}">
 
-<div class="db-tab-pane" id="tab-all">
-    <div class="card glass-card" style="padding: 20px; background: rgba(255,255,255,0.01); border-radius: 8px;">
-        <table class="db-table">
-            <thead>
-                <tr>
-                    <th class="mobile-hide">Tên tài khoản</th>
-                    <th class="mobile-hide">Email</th>
-                    <th class="mobile-show">Họ tên</th>
-                    <th class="mobile-hide">Chức vụ</th>
-                    <th class="mobile-hide">Trạng thái</th>
-                    <th class="mobile-hide">Mật khẩu</th>
-                    <th style="text-align: right;" class="mobile-show">Thao tác</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for u in all_users %}
-                <tr>
-                    <td class="mobile-hide"><strong>{{ u.username }}</strong></td>
-<td class="mobile-hide">
-    <div style="display: flex; align-items: center; gap: 8px;">
-        <span>{{ u.email }}</span>
-        <button type="button" class="btn-copy-table" 
-                onclick="copyToClipboard('{{ u.email }}', this)" title="Copy Email">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-            </svg>
-        </button>
-    </div>
-</td>
-                    <td class="mobile-show">{% if u.first_name or u.last_name %}{{ u.last_name }} {{ u.first_name }}{% else %}- Chưa cập nhật -{% endif %}</td>
-                    <td class="mobile-hide">{{ u.get_role_display }}</td>
-                    <td class="mobile-hide">{% if u.is_active %}<span class="badge badge-success">Đang hoạt động</span>{% else %}<span class="badge badge-danger">Đang khóa</span>{% endif %}</td>
-<td style="padding: 10px; color: #48bb78; font-weight: bold;" class="mobile-hide">
-    <div style="display: flex; align-items: center; gap: 8px;">
-        {% if u.is_password_changed %}
-            <span style="color: #64748b; font-style: italic; font-weight: normal;">Người dùng đã đổi</span>
-        {% else %}
-            <span>{{ u.plain_password_temp|default:"---" }}</span>
-            {% if u.plain_password_temp %}
-            <button type="button" class="btn-copy-table" 
-                    onclick="copyToClipboard('{{ u.plain_password_temp }}', this)" title="Copy Mật khẩu">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                </svg>
-            </button>
-            {% endif %}
-        {% endif %}
-    </div>
-</td>
-                 <td style="text-align: right;" class="mobile-show">
-                        <div class="btn-group-action" style="justify-content: flex-end; display: flex; gap: 5px; position: relative; z-index: 10;">
-    <button type="button" class="btn-sm btn-reset" onclick="openResetModal('{{ u.username }}')">🔄 Reset</button>
-    
-    <button type="button" class="btn-sm {% if u.is_active %}btn-lock{% else %}btn-unlock{% endif %}" 
-            onclick="openLockModal('{{ u.username }}', '{% if u.is_active %}lock{% else %}unlock{% endif %}')">
-        {% if u.is_active %}🔒 Khóa{% else %}🔓 Mở{% endif %}
-    </button>
-    
-<button type="button" class="btn-sm btn-view" 
-        onclick="openViewModal(this)"
-        data-username="{{ u.username }}"
-        data-email="{{ u.email }}"
-        data-fullname="{{ u.get_full_name }}"
-        data-role="{{ u.role }}"
-        data-birth="{{ u.birth_date|date:'d/m/Y' }}"
-        data-phone="{{ u.phone_number|default:'---' }}"
-        data-password="{{ u.plain_password_temp|default:'---' }}"
-        data-password-changed="{{ u.is_password_changed }}"
-        data-active="{{ u.is_active }}"> 👁️ Xem
-</button>
-<button type="button" class="btn-sm btn-delete js-delete" 
-        data-username="{{ u.username }}" 
-        style="background: #ef4444; color: white; border: none; cursor: pointer;">
-    🗑️ Xóa
-</button>
-</div>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr><td colspan="7" style="text-align: center; color: #64748b;">Chưa có tài khoản nào.</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</div>
+ <div class="db-tab-pane" >
+{% block page_total %}{% endblock %}
+{% block content_admin %}{% endblock %}
+{% block adminqt %}{% endblock %}
+{% block logs_content %}
+    {% endblock %}
 
-<div class="db-tab-pane hidden" id="tab-user">
-    <div class="card glass-card" style="padding: 20px; background: rgba(255,255,255,0.01); border-radius: 8px;">
-        <table class="db-table">
-            <thead>
-                <tr>
-                    <th class="mobile-hide">Tên tài khoản</th>
-                    <th class="mobile-hide">Email</th>
-                    <th class="mobile-show">Họ tên</th>
-                    <th class="mobile-hide">Trạng thái</th>
-                    <th class="mobile-hide">Mật khẩu</th>
-                    <th style="text-align: right;" class="mobile-show">Thao tác</th></tr>
-            </thead>
-            <tbody>
-                {% for u in user_accounts %}
-                <tr>
-                    <td class="mobile-hide">{{ u.username }}</td>
-                    <td class="mobile-hide">
-    <div style="display: flex; align-items: center; gap: 8px;">
-        <span>{{ u.email }}</span>
-        <button type="button" class="btn-copy-table" 
-                onclick="copyToClipboard('{{ u.email }}', this)" title="Copy Email">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-            </svg>
-        </button>
-    </div>
-</td>
-                    <td class="mobile-show">{{ u.get_full_name }}</td>
-                    <td class="mobile-hide">{% if u.is_active %}<span class="badge badge-success">Đang hoạt động</span>{% else %}<span class="badge badge-danger">Đang khóa</span>{% endif %}</td>
-                    <td style="padding: 10px; color: #48bb78; font-weight: bold;" class="mobile-hide">
-    <div style="display: flex; align-items: center; gap: 8px;">
-        <span>{{ u.plain_password_temp|default:"---" }}</span>
-        {% if u.plain_password_temp %}
-        <button type="button" class="btn-copy-table" 
-                onclick="copyToClipboard('{{ u.plain_password_temp }}', this)" title="Copy Mật khẩu">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-            </svg>
-        </button>
-        {% endif %}
-    </div>
-</td>
-                    <td style="text-align: right;" class="mobile-show">
-                        <div class="btn-group-action" style="justify-content: flex-end; display: flex; gap: 5px;">
-                            <button class="btn-sm btn-reset" onclick="openResetModal('{{ u.username }}')">🔄 Reset</button>
-                            <button class="btn-sm {% if u.is_active %}btn-lock{% else %}btn-unlock{% endif %}" onclick="openLockModal('{{ u.username }}', '{% if u.is_active %}lock{% else %}unlock{% endif %}')">
-                                {% if u.is_active %}🔒 Khóa{% else %}🔓 Mở{% endif %}
-                            </button>
-                            <button type="button" class="btn-sm btn-view" 
-        onclick="openViewModal(this)"
-        data-username="{{ u.username }}"
-        data-email="{{ u.email }}"
-        data-fullname="{{ u.get_full_name }}"
-        data-role="{{ u.role }}"
-        data-birth="{{ u.birth_date|date:'d/m/Y' }}"
-        data-phone="{{ u.phone_number|default:'---' }}"
-        data-password="{{ u.plain_password_temp|default:'---' }}"
-        data-password-changed="{{ u.is_password_changed }}"
-        data-active="{{ u.is_active }}"> 👁️ Xem
-</button>
-<button type="button" class="btn-sm btn-delete js-delete" 
-        data-username="{{ u.username }}" 
-        style="background: #ef4444; color: white; border: none; cursor: pointer;">
-    🗑️ Xóa
-</button>
-                        </div>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr><td colspan="6" style="text-align: center; color: #64748b;">Không có dữ liệu Kiểm nghiệm viên.</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
 </div>
-
-<div class="db-tab-pane hidden" id="tab-admin">
-    <div class="card glass-card" style="padding: 20px; background: rgba(255,255,255,0.01); border-radius: 8px;">
-        <table class="db-table">
-            <thead>
-                <tr>
-                    <th class="mobile-hide">Tên tài khoản</th>
-                    <th class="mobile-hide">Email</th>
-                    <th class="mobile-show">Họ tên</th>
-                    <th class="mobile-hide">Trạng thái</th>
-                    <th class="mobile-hide">Mật khẩu</th>
-                    <th style="text-align: right;" class="mobile-show">Thao tác</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for u in admin_accounts %}
-                <tr>
-                    <td class="mobile-hide">{{ u.username }}</td>
-                    <td class="mobile-hide">
-    <div style="display: flex; align-items: center; gap: 8px;">
-        <span>{{ u.email }}</span>
-        <button type="button" class="btn-copy-table" 
-                onclick="copyToClipboard('{{ u.email }}', this)" title="Copy Email">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-            </svg>
-        </button>
-    </div>
-</td>
-                    <td class="mobile-show">{{ u.get_full_name }}</td>
-                    <td class="mobile-hide">{% if u.is_active %}<span class="badge badge-success">Đang hoạt động</span>{% else %}<span class="badge badge-danger">Đang khóa</span>{% endif %}</td>
-                    <td style="padding: 10px; color: #48bb78; font-weight: bold;" class="mobile-hide">
-    <div style="display: flex; align-items: center; gap: 8px;">
-        <span>{{ u.plain_password_temp|default:"---" }}</span>
-        {% if u.plain_password_temp %}
-        <button type="button" class="btn-copy-table" 
-                onclick="copyToClipboard('{{ u.plain_password_temp }}', this)" title="Copy Mật khẩu">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-            </svg>
-        </button>
-        {% endif %}
-    </div>
-</td>
-                    <td style="text-align: right;" class="mobile-show">
-                        <div class="btn-group-action" style="justify-content: flex-end; display: flex; gap: 5px;">
-                            <button class="btn-sm btn-reset" onclick="openResetModal('{{ u.username }}')">🔄 Reset</button>
-                            <button class="btn-sm {% if u.is_active %}btn-lock{% else %}btn-unlock{% endif %}" onclick="openLockModal('{{ u.username }}', '{% if u.is_active %}lock{% else %}unlock{% endif %}')">
-                                {% if u.is_active %}🔒 Khóa{% else %}🔓 Mở{% endif %}
-                            </button>
-                            <button type="button" class="btn-sm btn-view" 
-        onclick="openViewModal(this)"
-        data-username="{{ u.username }}"
-        data-email="{{ u.email }}"
-        data-fullname="{{ u.get_full_name }}"
-        data-role="{{ u.role }}"
-        data-birth="{{ u.birth_date|date:'d/m/Y' }}"
-        data-phone="{{ u.phone_number|default:'---' }}"
-        data-password="{{ u.plain_password_temp|default:'---' }}"
-        data-password-changed="{{ u.is_password_changed }}"
-        data-active="{{ u.is_active }}"> 👁️ Xem
-</button>
-<button type="button" class="btn-sm btn-delete js-delete" 
-        data-username="{{ u.username }}" 
-        style="background: #ef4444; color: white; border: none; cursor: pointer;">
-    🗑️ Xóa
-</button>
-                        </div>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr><td colspan="6" style="text-align: center; color: #64748b;">Không có dữ liệu </td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</div>
-
 </div>
     </main>
 </div>
@@ -372,17 +159,17 @@
     <div class="modal-box">
         <h3 style="color:#fff; margin-bottom:10px;">Đặt lại mật khẩu</h3>
         <p style="color:#94a3b8; font-size:0.9rem; margin-bottom:20px;">Bạn đang thực hiện cấp lại mật khẩu mới cho tài khoản: <strong id="reset-target-user" style="color:#3b82f6;"></strong></p>
-        <form method="POST" action="">
+        <form method="POST" action="{% url 'admin_dashboard' %}">
             {% csrf_token %}
             <input type="hidden" name="action_type" value="reset_password">
             <input type="hidden" name="target_username" id="reset-hidden-user">
             <div class="form-group" style="margin-bottom: 20px;">
-                <label>Mật khẩu mới</label>
-                <input type="text" name="new_password" placeholder="Bỏ trống để tự tạo ngẫu nhiên">
+                <label style="color: #cbd5e1; display: block; margin-bottom: 5px;">Mật khẩu mới</label>
+                <input type="text" name="new_password" placeholder="Bỏ trống để tự tạo ngẫu nhiên" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #334155; background: #0f172a; color: white;">
             </div>
             <div style="display:flex; gap:10px; justify-content:flex-end;">
-                <button type="button" class="btn-sm" style="background:#475569;" onclick="closeModal('reset-modal')">Hủy bỏ</button>
-                <button type="submit" class="btn-sm" style="background:#3b82f6;">Xác nhận đặt lại</button>
+                <button type="button" class="btn-sm" style="background:#475569; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;" onclick="closeModal('reset-modal')">Hủy bỏ</button>
+                <button type="submit" class="btn-sm" style="background:#3b82f6; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">Xác nhận đặt lại</button>
             </div>
         </form>
     </div>
@@ -392,56 +179,90 @@
     <div class="modal-box">
         <h3 id="lock-modal-title" style="color:#fff; margin-bottom:10px;">Thay đổi trạng thái tài khoản</h3>
         <p id="lock-modal-desc" style="color:#94a3b8; font-size:0.9rem; margin-bottom:20px;"></p>
-        <form method="POST" action="">
+        <form method="POST" action="{% url 'admin_dashboard' %}">
             {% csrf_token %}
             <input type="hidden" name="action_type" value="toggle_status">
             <input type="hidden" name="target_username" id="lock-hidden-user">
             <input type="hidden" name="current_status" id="lock-hidden-status">
             <div style="display:flex; gap:10px; justify-content:flex-end;">
-                <button type="button" class="btn-sm" style="background:#475569;" onclick="closeModal('lock-modal')">Hủy</button>
-                <button type="submit" id="lock-modal-submit-btn" class="btn-sm" style="background:#ef4444;">Xác nhận</button>
+                <button type="button" class="btn-sm" style="background:#475569; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;" onclick="closeModal('lock-modal')">Hủy</button>
+                <button type="submit" id="lock-modal-submit-btn" class="btn-sm" style="background:#ef4444; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">Xác nhận</button>
             </div>
         </form>
     </div>
 </div>
 
 <div id="view-modal" class="modal-overlay hidden">
-    <div class="modal-content">
-        <h3>Thông tin chi tiết</h3>
+    <div class="modal-content" style="background: #1e293b; padding: 24px; border-radius: 8px; max-width: 450px; width: 100%; color: white; margin: 10% auto;">
+        <h3 style="margin-bottom: 15px; border-bottom: 1px solid #334155; padding-bottom: 10px;">Thông tin chi tiết</h3>
         
-        <div class="info-row"><strong>Tài khoản:</strong> <span id="v-username"></span></div>
+        <div class="info-row" style="margin-bottom: 10px;"><strong>Tài khoản:</strong> <span id="v-username"></span></div>
         
-        <div class="info-row">
+        <div class="info-row" style="margin-bottom: 10px;">
             <strong>Email:</strong> 
             <span>
                 <span id="v-email"></span> 
-                <button class="btn-copy-mini" onclick="copyToClipboard(document.getElementById('v-email').innerText, this)" title="Copy">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                <button class="btn-copy-mini" onclick="copyToClipboard(document.getElementById('v-email').innerText, this)" title="Copy" style="background: none; border: none; color: #94a3b8; cursor: pointer; margin-left: 5px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                 </button>
             </span>
         </div>
 
-       <div class="info-row">
-    <strong>Mật khẩu:</strong> 
-    <span>
-        <span id="v-password" style="color: #48bb78;"></span> 
-        <button id="v-copy-btn" class="btn-copy-mini" onclick="copyToClipboard(document.getElementById('v-password').innerText, this)" title="Copy">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-            </svg>
-        </button>
-    </span>
-</div>
+        <div class="info-row" style="margin-bottom: 10px;">
+            <strong>Mật khẩu:</strong> 
+            <span>
+                <span id="v-password" style="color: #48bb78;"></span> 
+                <button id="v-copy-btn" class="btn-copy-mini" onclick="copyToClipboard(document.getElementById('v-password').innerText, this)" title="Copy" style="background: none; border: none; color: #94a3b8; cursor: pointer; margin-left: 5px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
+                </button>
+            </span>
+        </div>
         
-        <div class="info-row"><strong>Họ tên:</strong> <span id="v-fullname"></span></div>
-        <div class="info-row"><strong>Chức vụ:</strong> <span id="v-role"></span></div>
-        <div class="info-row"><strong>Ngày sinh:</strong> <span id="v-birth"></span></div>
-        <div class="info-row"><strong>Số ĐT:</strong> <span id="v-phone"></span></div>
-        <div class="info-row"><strong>Trạng thái:</strong> <span id="v-status"></span></div>
+        <div class="info-row" style="margin-bottom: 10px;"><strong>Họ tên:</strong> <span id="v-fullname"></span></div>
+        <div class="info-row" style="margin-bottom: 10px;"><strong>Chức vụ:</strong> <span id="v-role"></span></div>
+        <div class="info-row" style="margin-bottom: 10px;"><strong>Ngày sinh:</strong> <span id="v-birth"></span></div>
+        <div class="info-row" style="margin-bottom: 10px;"><strong>Số ĐT:</strong> <span id="v-phone"></span></div>
+        <div class="info-row" style="margin-bottom: 10px;"><strong>Trạng thái:</strong> <span id="v-status"></span></div>
         
         <button onclick="closeModal('view-modal')" style="width: 100%; margin-top: 20px; padding: 10px; border-radius: 6px; border: none; background: #3b82f6; color: white; cursor: pointer;">Đóng</button>
     </div>
 </div>
+
+<div id="filter-modal" class="modal hidden">
+    <div class="modal-content" style="position: relative;">
+        <span onclick="closeFilterModal()" style="position: absolute; top: 10px; right: 15px; cursor: pointer; font-size: 20px; color: #94a3b8;">&times;</span>
+        <h3 style="margin-top: 0;">Lọc nâng cao</h3>
+        <form method="GET" action="" id="filter-form">
+            <input type="text" name="phone_filter" placeholder="Số điện thoại" value="{{ request.GET.phone_filter }}">
+            <input type="date" name="birth_filter" value="{{ request.GET.birth_filter }}">
+            <select name="status"><option value="">Trạng thái</option><option value="1">Hoạt động</option><option value="0">Khóa</option></select>
+            <button type="submit" style="width: 100%; padding: 10px; background: #3b82f6; color: white; border: none; border-radius: 6px;">Áp dụng</button>
+        </form>
+    </div>
+</div>
+
 <script src="{% static 'coreapp/js/admin.js' %}"></script>
+<script>
+function toggleLogSubmenu() {
+    const container = document.getElementById('log-submenu-container');
+    const arrow = document.getElementById('log-arrow');
+    
+    // Toggle class để đóng/mở
+    container.classList.toggle('is-open');
+    arrow.classList.toggle('rotate-arrow');
+}
+
+// Tùy chọn: Tự động mở nếu đang ở trang nhật ký
+document.addEventListener("DOMContentLoaded", function() {
+    const path = window.location.pathname;
+    if (path.includes('log')) { // Thay 'log' bằng URL thực tế của bạn
+        document.getElementById('log-submenu-container').classList.add('is-open');
+        document.getElementById('log-arrow').classList.add('rotate-arrow');
+    }
+});
+</script>
+
 {% endblock %}

@@ -1,0 +1,612 @@
+    /* Khung ngoài phong cách đơn hàng TikTok Shop */
+    .timeline-container {
+        display: flex;
+        flex-direction: column;
+        height: calc(100vh - 200px);
+        min-height: 450px;
+        background: rgba(15, 23, 42, 0.3);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 12px;
+        padding: 24px;
+    }
+
+    .timeline-scroll-area {
+        flex: 1;
+        overflow-y: auto;
+        padding-left: 10px; /* Tạo khoảng trống cho trục dọc bên trái */
+        padding-right: 8px;
+    }
+
+    /* Tùy chỉnh thanh cuộn tinh tế */
+    .timeline-scroll-area::-webkit-scrollbar {
+        width: 6px;
+    }
+    .timeline-scroll-area::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 4px;
+    }
+
+    /* Cấu trúc Trục dọc chính: Sử dụng flex-direction: column-reverse để log mới đẩy lên đầu */
+    .tiktok-timeline {
+        position: relative;
+        border-left: 2px solid rgba(255, 255, 255, 0.08); /* Đường gióng dọc */
+        margin-left: 10px;
+        padding-left: 24px;
+        display: flex;
+        flex-direction: column-reverse; /* ĐẢO NGƯỢC THỨ TỰ: Log mới nhất nằm ở trên cùng */
+        gap: 24px;
+    }
+
+    /* Một mốc sự kiện */
+    .timeline-node {
+        position: relative;
+        animation: slideIn 0.3s ease-out;
+    }
+
+    /* Điểm nút tròn (Bullet point) nằm đè lên trục dọc */
+    .timeline-node::before {
+        content: '';
+        position: absolute;
+        left: -31px; /* Căn chuẩn giữa đường line */
+        top: 4px;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: #475569; /* Màu mặc định cho các log cũ */
+        border: 2px solid #0f172a;
+        box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.05);
+        transition: all 0.3s ease;
+    }
+
+    /* Vì dùng column-reverse, phần tử ĐẦU TIÊN trong vòng lặp (mới nhất) sẽ là LAST-CHILD trong DOM DOM tree */
+    .timeline-node:last-child::before {
+        background: #fe2c55; /* Màu đỏ đặc trưng TikTok cho log mới nhất */
+        box-shadow: 0 0 10px #fe2c55;
+    }
+
+    /* Hộp chứa thông tin sự kiện */
+    .timeline-content {
+        background: rgba(30, 41, 59, 0.4);
+        border: 1px solid rgba(255, 255, 255, 0.02);
+        padding: 14px 18px;
+        border-radius: 8px;
+        transition: background 0.2s;
+    }
+
+    .timeline-content:hover {
+        background: rgba(30, 41, 59, 0.6);
+        border-color: rgba(255, 255, 255, 0.05);
+    }
+
+    /* Khối thời gian bên trên */
+    .timeline-time {
+        font-size: 0.8rem;
+        color: #94a3b8;
+        font-family: monospace;
+        margin-bottom: 6px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    /* Text mô tả hành động */
+    .timeline-action {
+        color: #e2e8f0;
+        font-size: 0.92rem;
+        line-height: 1.5;
+    }
+
+    /* Link tài khoản */
+    .timeline-user-link {
+        color: #2563eb;
+        font-weight: 600;
+        text-decoration: none;
+        background: rgba(37, 99, 235, 0.15);
+        padding: 1px 6px;
+        border-radius: 4px;
+        transition: all 0.1s;
+    }
+    
+    .timeline-user-link:hover {
+        color: #60a5fa;
+        background: rgba(37, 99, 235, 0.25);
+    }
+
+    /* Hiệu ứng trượt xuất hiện */
+    @keyframes slideIn {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+
+        /* ================= THANH TÌM KIẾM TEXT GỐC CÓ CHÈN ICON ĐỒNG HỒ ================= */
+   .log-search-bar {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        background: #1a233a;
+        padding: 12px;
+        border-radius: 8px;
+        width: 100%;
+    }
+    .log-search-input {
+        flex: 1; /* Ô input tự động kéo dài chiếm hết khoảng trống */
+        height: 42px;
+        background: #111827;
+        border: 1px solid #2d3748;
+        color: #fff;
+        padding: 0 16px;
+        border-radius: 6px;
+        outline: none;
+    }
+    .log-search-input:focus {
+        border-color: #fe2c55;
+    }
+    
+    /* Khối bọc 2 nút: Ép luôn nằm ngang trên PC */
+    .search-actions-mobile {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-shrink: 0; /* Ngăn không cho cụm nút bị bóp nhỏ chữ */
+    }
+    
+    .time-modal-trigger, .log-search-btn {
+        height: 42px;
+        white-space: nowrap; /* Giữ chữ trên 1 hàng thẳng băng */
+        padding: 0 16px;
+        border-radius: 6px;
+        font-weight: 500;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        border: none;
+    }
+
+    .time-modal-trigger {
+        background: #2d3748;
+        color: #fff;
+    }
+    .time-modal-trigger:hover {
+        background: #475569;
+        border-color: #64748b;
+    }
+
+    .log-search-btn {
+        background: #ff2d55;
+        color: #fff;
+    }
+    .log-search-btn:hover {
+        background: #e11d48;
+    }
+    /* ================= FIX CHI TIẾT CON LĂN ĐỂ BẮT BUỘC CUỘN ĐƯỢC ================= */
+    .iphone-picker-box {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        position: relative !important;
+        background: #090d16 !important;
+        width: 200px !important;
+        height: 110px !important;
+        border-radius: 14px !important;
+        overflow: hidden !important;
+        margin: 20px auto !important;
+        border: 1px solid #334155 !important;
+    }
+    /* Thanh ngắm tiêu điểm iOS */
+    .iphone-picker-box::before {
+        content: "";
+        position: absolute;
+        left: 0; right: 0; top: 40px; bottom: 40px;
+        background: rgba(255, 255, 255, 0.06);
+        border-top: 1px solid rgba(255, 255, 255, 0.15);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+        pointer-events: none;
+        z-index: 5;
+    }
+    /* Cột cuộn bắt buộc kích hoạt scroll native */
+    .ios-wheel-column {
+        flex: 1 !important;
+        height: 100% !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        scroll-snap-type: y mandatory !important;
+        scrollbar-width: none !important;
+        -ms-overflow-style: none !important;
+    }
+    .ios-wheel-column::-webkit-scrollbar {
+        display: none !important;
+    }
+    .wheel-spacer {
+        height: 40px !important;
+        display: block !important;
+        content: "";
+    }
+    .wheel-number {
+        height: 30px !important;
+        line-height: 30px !important;
+        font-size: 1.1rem !important;
+        color: #475569 !important;
+        font-weight: 500 !important;
+        text-align: center !important;
+        scroll-snap-align: center !important;
+        transition: color 0.15s, font-weight 0.15s, font-size 0.15s;
+    }
+    .wheel-number.active-ios {
+        color: #ffffff !important;
+        font-weight: 700 !important;
+        font-size: 1.3rem !important;
+    }
+    .picker-dots {
+        color: #fe2c55;
+        font-size: 1.4rem;
+        font-weight: bold;
+        line-height: 110px;
+        z-index: 4;
+        width: 14px;
+        text-align: center;
+    }
+
+    /* FIX TRIỆT ĐỂ BẢNG TRẮNG CỦA MODAL CHI TIẾT */
+    #userLogDetailModal .table, 
+    #userLogDetailModal .table tbody, 
+    #userLogDetailModal .table tr, 
+    #userLogDetailModal .table td {
+        background-color: transparent !important;
+        color: #e2e8f0 !important;
+        border: none !important;
+    }
+
+    /* Hiệu ứng nhấp nháy đỏ khi nhảy đến log */
+    @keyframes pulse-red {
+        0% { background-color: rgba(254, 44, 85, 0.3); box-shadow: 0 0 0 0 rgba(254, 44, 85, 0.5); }
+        50% { background-color: rgba(254, 44, 85, 0.6); box-shadow: 0 0 12px 4px rgba(254, 44, 85, 0.4); }
+        100% { background-color: rgba(254, 44, 85, 0.3); box-shadow: 0 0 0 0 rgba(254, 44, 85, 0); }
+    }
+    .highlight-match {
+        animation: pulse-red 1.2s ease-in-out 3;
+        border-color: #fe2c55 !important;
+        border-radius: 8px;
+    }
+
+    /* ================= RESPONSIVE ĐÁP ỨNG TRÊN MOBILE CHUẨN APP ================= */
+    @media (max-width: 768px) {
+        /* Chuyển thanh tìm kiếm thành dạng khối xếp dọc */
+        .log-search-bar {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .log-search-input {
+            width: 100%;
+        }
+
+        /* Đặt nút Tìm kiếm và Chọn giờ nằm song song nhau trên 1 hàng di động */
+        .log-search-bar {
+            display: grid !important;
+            grid-template-columns: 1fr;
+            gap: 8px;
+        }
+        
+        /* Bổ sung bọc khối cho hàng nút bên dưới input */
+        .search-actions {
+    display: grid;
+        grid-template-columns: 1fr 1fr;
+        width: 100%;
+}
+
+        .time-modal-trigger, .log-search-btn {
+    height: 42px;
+    white-space: nowrap; /* Giữ chữ trên 1 hàng, không cho xuống dòng */
+    padding: 0 16px;
+    border-radius: 6px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border: none;
+}
+
+        /* Tinh chỉnh phần dòng thời gian (Timeline Nodes) trên mobile */
+        .timeline-node {
+            padding: 8px 0 !important;
+        }
+
+        .timeline-content {
+            padding: 12px !important;
+            border-radius: 8px !important;
+        }
+
+        /* Chuyển đổi thông tin hiển thị log: giờ lên trên, hành động xuống dưới */
+        .timeline-time {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            font-size: 0.8rem !important;
+            margin-bottom: 6px;
+        }
+
+        .timeline-action {
+            font-size: 0.9rem !important;
+            line-height: 1.4;
+            word-break: break-word; /* Chống tràn chữ khi tên user hoặc hành động dài */
+        }
+
+        /* Ép căn chỉnh Modal chi tiết hiển thị dạng bảng thông tin dọc full chiều ngang */
+        #userLogDetailModal .modal-dialog {
+            margin: 12px;
+            max-width: calc(100% - 24px) !important;
+        }
+
+        #userLogDetailModal .table td {
+            padding: 6px 0 !important;
+            font-size: 0.85rem;
+        }
+    }
+
+    /* Hiệu ứng viền sáng nhẹ khi dùng phím Tab tập trung vào cột */
+.ios-wheel-column:focus-visible {
+    outline: none;
+    background: rgba(254, 44, 85, 0.05) !important;
+    box-shadow: inset 0 0 4px rgba(254, 44, 85, 0.3);
+}
+
+    /* ================= THANH TÌM KIẾM TEXT GỐC CÓ CHÈN ICON ĐỒNG HỒ ================= */
+   .log-search-bar {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        background: #1a233a;
+        padding: 12px;
+        border-radius: 8px;
+        width: 100%;
+    }
+    .log-search-input {
+        flex: 1; /* Ô input tự động kéo dài chiếm hết khoảng trống */
+        height: 42px;
+        background: #111827;
+        border: 1px solid #2d3748;
+        color: #fff;
+        padding: 0 16px;
+        border-radius: 6px;
+        outline: none;
+    }
+    .log-search-input:focus {
+        border-color: #fe2c55;
+    }
+    
+    /* Khối bọc 2 nút: Ép luôn nằm ngang trên PC */
+    .search-actions-mobile {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-shrink: 0; /* Ngăn không cho cụm nút bị bóp nhỏ chữ */
+    }
+    
+    .time-modal-trigger, .log-search-btn {
+        height: 42px;
+        white-space: nowrap; /* Giữ chữ trên 1 hàng thẳng băng */
+        padding: 0 16px;
+        border-radius: 6px;
+        font-weight: 500;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        border: none;
+    }
+
+    .time-modal-trigger {
+        background: #2d3748;
+        color: #fff;
+    }
+    .time-modal-trigger:hover {
+        background: #475569;
+        border-color: #64748b;
+    }
+
+    .log-search-btn {
+        background: #ff2d55;
+        color: #fff;
+    }
+    .log-search-btn:hover {
+        background: #e11d48;
+    }
+    /* ================= FIX CHI TIẾT CON LĂN ĐỂ BẮT BUỘC CUỘN ĐƯỢC ================= */
+    .iphone-picker-box {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        position: relative !important;
+        background: #090d16 !important;
+        width: 200px !important;
+        height: 110px !important;
+        border-radius: 14px !important;
+        overflow: hidden !important;
+        margin: 20px auto !important;
+        border: 1px solid #334155 !important;
+    }
+    /* Thanh ngắm tiêu điểm iOS */
+    .iphone-picker-box::before {
+        content: "";
+        position: absolute;
+        left: 0; right: 0; top: 40px; bottom: 40px;
+        background: rgba(255, 255, 255, 0.06);
+        border-top: 1px solid rgba(255, 255, 255, 0.15);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+        pointer-events: none;
+        z-index: 5;
+    }
+    /* Cột cuộn bắt buộc kích hoạt scroll native */
+    .ios-wheel-column {
+        flex: 1 !important;
+        height: 100% !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        scroll-snap-type: y mandatory !important;
+        scrollbar-width: none !important;
+        -ms-overflow-style: none !important;
+        scroll-behavior: auto !important;
+    }
+    .ios-wheel-column::-webkit-scrollbar {
+        display: none !important;
+    }
+    .wheel-spacer {
+        height: 40px !important;
+        display: block !important;
+        content: "";
+    }
+    .wheel-number {
+        height: 30px !important;
+        line-height: 30px !important;
+        font-size: 1.1rem !important;
+        color: #475569 !important;
+        font-weight: 500 !important;
+        text-align: center !important;
+        scroll-snap-align: center !important;
+        transition: color 0.15s, font-weight 0.15s, font-size 0.15s;
+    }
+    .wheel-number.active-ios {
+        color: #ffffff !important;
+        font-weight: 700 !important;
+        font-size: 1.3rem !important;
+    }
+    .picker-dots {
+        color: #fe2c55;
+        font-size: 1.4rem;
+        font-weight: bold;
+        line-height: 110px;
+        z-index: 4;
+        width: 14px;
+        text-align: center;
+    }
+
+    /* FIX TRIỆT ĐỂ BẢNG TRẮNG CỦA MODAL CHI TIẾT */
+    #userLogDetailModal .table, 
+    #userLogDetailModal .table tbody, 
+    #userLogDetailModal .table tr, 
+    #userLogDetailModal .table td {
+        background-color: transparent !important;
+        color: #e2e8f0 !important;
+        border: none !important;
+    }
+
+    /* Hiệu ứng nhấp nháy đỏ khi nhảy đến log */
+    @keyframes pulse-red {
+        0% { background-color: rgba(254, 44, 85, 0.3); box-shadow: 0 0 0 0 rgba(254, 44, 85, 0.5); }
+        50% { background-color: rgba(254, 44, 85, 0.6); box-shadow: 0 0 12px 4px rgba(254, 44, 85, 0.4); }
+        100% { background-color: rgba(254, 44, 85, 0.3); box-shadow: 0 0 0 0 rgba(254, 44, 85, 0); }
+    }
+    .highlight-match {
+        animation: pulse-red 1.2s ease-in-out 3;
+        border-color: #fe2c55 !important;
+        border-radius: 8px;
+    }
+
+    /* ================= RESPONSIVE ĐÁP ỨNG TRÊN MOBILE CHUẨN APP ================= */
+    @media (max-width: 768px) {
+        /* Chuyển thanh tìm kiếm thành dạng khối xếp dọc */
+        .log-search-bar {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .log-search-input {
+            width: 100%;
+        }
+
+        /* Đặt nút Tìm kiếm và Chọn giờ nằm song song nhau trên 1 hàng di động */
+        .log-search-bar {
+            display: grid !important;
+            grid-template-columns: 1fr;
+            gap: 8px;
+        }
+        
+        /* Bổ sung bọc khối cho hàng nút bên dưới input */
+        .search-actions {
+    display: grid;
+        grid-template-columns: 1fr 1fr;
+        width: 100%;
+}
+
+        .time-modal-trigger, .log-search-btn {
+    height: 42px;
+    white-space: nowrap; /* Giữ chữ trên 1 hàng, không cho xuống dòng */
+    padding: 0 16px;
+    border-radius: 6px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border: none;
+}
+
+        /* Tinh chỉnh phần dòng thời gian (Timeline Nodes) trên mobile */
+        .timeline-node {
+            padding: 8px 0 !important;
+        }
+
+        .timeline-content {
+            padding: 12px !important;
+            border-radius: 8px !important;
+        }
+
+        /* Chuyển đổi thông tin hiển thị log: giờ lên trên, hành động xuống dưới */
+        .timeline-time {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            font-size: 0.8rem !important;
+            margin-bottom: 6px;
+        }
+
+        .timeline-action {
+            font-size: 0.9rem !important;
+            line-height: 1.4;
+            word-break: break-word; /* Chống tràn chữ khi tên user hoặc hành động dài */
+        }
+
+        /* Ép căn chỉnh Modal chi tiết hiển thị dạng bảng thông tin dọc full chiều ngang */
+        #userLogDetailModal .modal-dialog {
+            margin: 12px;
+            max-width: calc(100% - 24px) !important;
+        }
+
+        #userLogDetailModal .table td {
+            padding: 6px 0 !important;
+            font-size: 0.85rem;
+        }
+    }
+
+    /* Hiệu ứng viền sáng nhẹ khi dùng phím Tab tập trung vào cột */
+.ios-wheel-column:focus-visible {
+    outline: none;
+    background: rgba(254, 44, 85, 0.05) !important;
+    box-shadow: inset 0 0 4px rgba(254, 44, 85, 0.3);
+
+    
+}
+
+/* Ép Modal nằm trên cùng và có độ rộng chuẩn */
+.modal {
+    z-index: 100000 !important;
+}
+
+/* Đảm bảo backdrop nằm dưới Modal nhưng trên mọi thứ khác */
+.modal-backdrop {
+    z-index: 99999 !important;
+    display: none; /* Mặc định ẩn */
+}
+
+/* Khi Modal hiện, ép backdrop hiện và không bị kẹt */
+.modal.show + .modal-backdrop {
+    display: block !important;
+}
+
+/* Loại bỏ scroll-snap hoặc overflow gây đơ nếu có */
+body.modal-open {
+    overflow: hidden !important;
+}

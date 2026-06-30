@@ -21,6 +21,8 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 });
 
+
+
 // === LOGIC ĐIỀU KHIỂN MODAL RESET MẬT KHẨU ===
 function openResetModal(username) {
     const modal = document.getElementById('reset-modal');
@@ -107,7 +109,7 @@ function openDeleteModal(username) {
     if (confirm("Bạn có chắc chắn muốn xóa tài khoản " + username + "?")) {
         const form = document.createElement('form');
         form.method = 'POST';
-        form.action = '';
+        form.action = '/admin-dashboard/'; // Điền chính xác đường dẫn URL trang admin_dashboard của bạn
         form.innerHTML = `
             <input type="hidden" name="csrfmiddlewaretoken" value="${tokenEl.value}">
             <input type="hidden" name="action_type" value="delete_user">
@@ -175,25 +177,47 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 });
 
+
+
 function toggleSidebar() {
     const sidebar = document.querySelector('.db-sidebar');
     const overlay = document.querySelector('.sidebar-overlay');
-    sidebar.classList.toggle('active');
-    overlay.classList.toggle('active');
+    
+    if (sidebar && overlay) {
+        sidebar.classList.toggle('active');
+        overlay.classList.toggle('active');
+    }
 }
 
-// Tự động đóng khi nhấn vào mục menu
-document.querySelectorAll('.db-menu-item').forEach(item => {
-    item.addEventListener('click', () => {
-        if (window.innerWidth <= 768) {
-            toggleSidebar();
-        }
+// Tự động đóng menu khi người dùng click vào vùng trống (Overlay)
+document.addEventListener("DOMContentLoaded", function() {
+    const overlay = document.querySelector('.sidebar-overlay');
+    const sidebar = document.querySelector('.db-sidebar');
+    
+    if (overlay) {
+        overlay.addEventListener('click', function() {
+            sidebar.classList.remove('active');
+            overlay.classList.remove('active');
+        });
+    }
+});
+
+// Lắng nghe sự kiện đóng modal của Bootstrap
+document.querySelectorAll('.modal').forEach(modalElement => {
+    modalElement.addEventListener('hidden.bs.modal', function () {
+        // Xóa sạch backdrop còn sót lại
+        const backdrops = document.querySelectorAll('.modal-backdrop');
+        backdrops.forEach(backdrop => backdrop.remove());
+        
+        // Mở khóa giao diện
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = 'auto';
     });
 });
+
 // Đóng modal khi click ra ngoài overlay
 window.onclick = function(event) {
     if (event.target.classList.contains('modal-overlay')) {
         event.target.classList.add('hidden');
     }
 }
-

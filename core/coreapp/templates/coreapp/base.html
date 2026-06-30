@@ -7,18 +7,28 @@
     <meta name="description" content="PharmaScan - Giải pháp tự động hóa nhập liệu ngành Dược phẩm. Chuyển đổi file Word thông tin thuốc thành Form HTML tự động với độ chính xác cao.">
     <title>{% block title %}PharmaScan | Tự động hóa nhập liệu ngành Dược{% endblock %}</title>
     
+    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    
-    <link rel="stylesheet" href="{% static 'coreapp/css/style.css' %}">
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- CSS Custom -->
+    <link rel="stylesheet" href="{% static 'coreapp/css/style1.css' %}">
     
     {% block extra_head %}{% endblock %}
 </head>
+
 <body>
-    <main class="main-content">
+    <!-- Main Content Area -->
+    <main >
         {% block content %}{% endblock %}
+        {% block logs_content_detail %}{% endblock %}
     </main>
+
+    <!-- JS Custom -->
     <script src="{% static 'coreapp/js/main.js' %}"></script>
+    <!-- Bootstrap 5 Bundle JS (Đã bao gồm Popper để chạy Modal) -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

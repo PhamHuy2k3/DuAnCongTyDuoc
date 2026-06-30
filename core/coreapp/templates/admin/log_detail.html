@@ -1,0 +1,580 @@
+{% extends 'coreapp/base.html' %}
+{% load static %}
+
+{% block title %}Chi Tiết Nhật Ký Ngày {{ date_str }}{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'coreapp/css/log_today.css' %}">
+<link rel="stylesheet" href="{% static 'coreapp/css/log_detail.css' %}">
+
+<style>
+    /* 1. ÉP TOÀN BỘ TRANG VỀ NỀN TỐI DARK MODE */
+    body, html, main, .main-content {
+        background-color: #0b111e !important;
+    }
+
+    /* 2. TINH CHỈNH KHỐI BỌC CHI TIẾT NHẬT KÝ */
+    .log-detail-wrapper {
+        padding: 30px 20px;
+        max-width: 1200px;
+        margin: 0 auto;
+        color: #f8fafc;
+        background-color: #0b111e;
+        min-height: 100vh;
+    }
+
+    /* Tiêu đề trang */
+    .log-detail-header {
+        margin-bottom: 28px;
+        font-size: 1.6rem;
+        font-weight: 700;
+        color: #ffffff;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        padding-bottom: 12px;
+    }
+
+    /* 3. SỬA LẠI CÁC KHỐI TIMELINE */
+    .timeline-container {
+        background: transparent !important;
+    }
+
+    .timeline-node {
+        padding: 12px 0;
+    }
+
+    .timeline-content {
+        background: #1a233a !important;
+        border: 1px solid #2d3748 !important;
+        border-radius: 12px !important;
+        padding: 16px 20px !important;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Định dạng phần chữ thời gian */
+    .timeline-time {
+        font-size: 0.85rem;
+        color: #94a3b8 !important;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    /* Định dạng text hành động */
+    .timeline-action {
+        font-size: 1rem;
+        color: #e2e8f0 !important;
+    }
+
+    /* Link tag của user */
+    .timeline-user-link {
+        color: #fe2c55 !important;
+        text-decoration: none;
+        font-weight: 600;
+    }
+    .timeline-user-link:hover {
+        text-decoration: underline;
+    }
+
+    /* Viền sáng nhẹ khi nhấn Tab chọn cột giờ/phút */
+    .ios-wheel-column:focus-visible {
+        overflow-y: scroll;
+        scroll-snap-type: y mandatory;
+        outline: none;
+        background: rgba(254, 44, 85, 0.05) !important;
+        box-shadow: inset 0 0 4px rgba(254, 44, 85, 0.3);
+        will-change: scroll-position;
+    -webkit-overflow-scrolling: touch; /* Giúp mượt tuyệt đối trên Safari/iOS mobile */
+    transform: translateZ(0); /
+    }
+
+    /* Hiệu ứng nhấp nháy khi tìm thấy bản ghi */
+    @keyframes pulse-red {
+        0% { background-color: rgba(254, 44, 85, 0.3); box-shadow: 0 0 0 0 rgba(254, 44, 85, 0.5); }
+        50% { background-color: rgba(254, 44, 85, 0.6); box-shadow: 0 0 12px 4px rgba(254, 44, 85, 0.4); }
+        100% { background-color: rgba(254, 44, 85, 0.3); box-shadow: 0 0 0 0 rgba(254, 44, 85, 0); }
+    }
+    .highlight-match {
+        animation: pulse-red 1.2s ease-in-out 3;
+        border-color: #fe2c55 !important;
+        border-radius: 8px;
+    }
+
+    #userLogDetailModal .table, 
+    #userLogDetailModal .table tbody, 
+    #userLogDetailModal .table tr, 
+    #userLogDetailModal .table td {
+        background-color: transparent !important;
+        color: #e2e8f0 !important;
+        border: none !important;
+    }
+    .ios-wheel-column {
+    scroll-behavior: auto !important; /* Bắt buộc để khi nhảy danh sách số vô tận không bị lộ hoặc giật */
+}
+</style>
+{% endblock %}
+
+{% block logs_content_detail %}
+<div class="modal fade" id="iphoneTimePickerModal" tabindex="-1" aria-hidden="true" style="z-index: 10000;">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 340px; margin: auto;">
+        <div class="modal-content" style="background: #1e293b; border: 1px solid #334155; color: #f8fafc; border-radius: 12px;">
+            <div class="modal-header" style="border-bottom: 1px solid rgba(255,255,255,0.05); padding: 16px 20px;">
+                <h6 class="modal-title" style="color: #fe2c55; font-weight: bold; margin: 0;">Chọn giờ cần tìm</h6>
+            </div>
+            <div class="modal-body" style="padding: 15px 20px;">
+                <p style="font-size: 0.85rem; color: #94a3b8; text-align: center; margin: 0 0 10px 0;">Bấm vào số để sửa nhanh hoặc cuộn để chỉnh </p>
+                
+                <div class="iphone-picker-box">
+                    <div class="ios-wheel-column" id="modalHourWheel" tabindex="0">
+                        <div class="wheel-spacer"></div>
+                        <div class="wheel-spacer"></div>
+                    </div>
+                    
+                    <div class="picker-dots">:</div>
+                    
+                    <div class="ios-wheel-column" id="modalMinuteWheel" tabindex="0">
+                        <div class="wheel-spacer"></div>
+                        <div class="wheel-spacer"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="border-top: 1px solid rgba(255,255,255,0.05); padding: 12px 20px; display: flex; gap: 10px;">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal" style="background: #334155; border: none; flex: 1; padding: 10px 0; border-radius: 6px;">Hủy bỏ</button>
+                <button type="button" id="modalTimeSubmitBtn" class="btn btn-sm" style="background: #fe2c55; color: white; flex: 1; padding: 10px 0; border-radius: 6px; font-weight: 600;">Xác nhận</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="log-detail-wrapper">
+    <h2 class="log-detail-header">📋 Chi tiết nhật ký ngày: {{ date_str }}</h2>
+    
+    <div class="log-search-bar">
+        <input type="text" id="logSearchInput" class="log-search-input" 
+               placeholder="Nhập tài khoản hoặc SĐT tra cứu hành tung...">
+        
+        <div class="search-actions-mobile">
+            <div class="time-modal-trigger" data-bs-toggle="modal" data-bs-target="#iphoneTimePickerModal" title="Tìm theo mốc giờ">
+                ⏱️ Chọn Giờ
+            </div>
+            <button type="button" id="logSearchBtn" class="log-search-btn">Tìm kiếm</button>
+        </div>
+    </div>
+    
+    <div class="timeline-container">
+        <div class="timeline-scroll-area" id="chatArea">
+            <div class="tiktok-timeline">
+                {% for log in logs %}
+                <div class="timeline-node js-timeline-node"
+                     data-search-username="{{ log.user.username|lower }}"
+                     data-search-phone="{{ log.user.phone_number|default:'' }}"
+                     data-search-time="{{ log.timestamp|date:'H:i' }}">
+                    <div class="timeline-content">
+                        <div class="timeline-time">
+                            <span>⏱️ {{ log.timestamp|date:"H:i:s" }}</span>
+                            <span style="color: rgba(255,255,255,0.15);">|</span>
+                            <span>{{ log.timestamp|date:"d/m/Y" }}</span>
+                        </div>
+                        
+                        <div class="timeline-action">
+                            {% if log.user %}
+                            <a href="javascript:void(0);" class="timeline-user-link"
+                               data-username="{{ log.user.username }}"
+                               data-email="{{ log.user.email }}"
+                               data-fullname="{{ log.user.get_full_name|default:log.user.username }}"
+                               data-role="{% if log.user.is_superuser %}Quản trị viên{% else %}Người dùng{% endif %}"
+                               data-birth="{% if log.user.birth_date %}{{ log.user.birth_date|date:'d/m/Y' }}{% else %}Chưa cập nhật{% endif %}"
+                               data-phone="{{ log.user.phone_number|default:'Chưa cập nhật' }}"
+                               data-status="{% if log.user.is_active %}Đang hoạt động{% else %}Đang bị khóa{% endif %}"
+                               onclick="showUserDetailFromDataset(this)">
+                                 @{{ log.user.username }}
+                            </a>
+                            {% else %}
+                            <span style="color: #64748b; font-weight: 600;">Hệ thống tự động</span>
+                            {% endif %}
+                            
+                            <span style="margin-left: 4px;">{{ log.action_text }}{{ log.action }}</span>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 300px; color: #475569; width: 100%;">
+                    <span style="font-size: 3rem; margin-bottom: 10px;">📦</span>
+                    <p>Nhật ký trống. Không tìm thấy dữ liệu hoạt động trong ngày này.</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="userLogDetailModal" tabindex="-1" aria-hidden="true" style="z-index: 10005;">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 480px; width: 100%;">
+        <div class="modal-content" style="background: #1e293b; border: 1px solid rgba(255,255,255,0.1); color: #f8fafc; box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.7); border-radius: 12px;">
+            <div class="modal-header" style="border-bottom: 1px solid rgba(255,255,255,0.05); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center;">
+                <h5 class="modal-title" style="color: #fe2c55; font-weight: bold; margin: 0;">Chi Tiết Người Dùng</h5>
+            </div>
+            <div class="modal-body" style="padding: 20px 24px;">
+                <table class="table table-borderless" style="margin-bottom: 0; width: 100%;">
+                    <tbody>
+                        <tr><td style="width: 35%; color: #94a3b8; padding: 8px 0;">Tài khoản:</td><td id="log-m-username" style="font-weight: 600; padding: 8px 0;"></td></tr>
+                        <tr><td style="color: #94a3b8; padding: 8px 0;">Họ tên:</td><td id="log-m-fullname" style="padding: 8px 0;"></td></tr>
+                        <tr><td style="color: #94a3b8; padding: 8px 0;">Email:</td><td id="log-m-email" style="padding: 8px 0;"></td></tr>
+                        <tr><td style="color: #94a3b8; padding: 8px 0;">Chức vụ:</td><td style="padding: 8px 0;"><span id="log-m-role" class="badge text-light"></span></td></tr>
+                        <tr><td style="color: #94a3b8; padding: 8px 0;">Ngày sinh:</td><td id="log-m-birth" style="padding: 8px 0;"></td></tr>
+                        <tr><td style="color: #94a3b8; padding: 8px 0;">Số điện thoại:</td><td id="log-m-phone" style="padding: 8px 0;"></td></tr>
+                        <tr><td style="color: #94a3b8; padding: 8px 0;">Trạng thái:</td><td style="padding: 8px 0;"><span id="log-m-status" class="badge"></span></td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="modal-footer" style="border-top: 1px solid rgba(255,255,255,0.05); padding: 14px 24px; display: flex; justify-content: flex-end;">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal" style="background: #334155; border: none; padding: 8px 24px; border-radius: 6px; color: #fff; font-weight: 500;">Đóng</button>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="userLogDetailModal" tabindex="-1" aria-hidden="true" style="z-index: 10005;">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 480px; width: 100%;">
+        <div class="modal-content" style="background: #1e293b; border: 1px solid rgba(255,255,255,0.1); color: #f8fafc; box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.7); border-radius: 12px;">
+            <div class="modal-header" style="border-bottom: 1px solid rgba(255,255,255,0.05); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center;">
+                <h5 class="modal-title" style="color: #fe2c55; font-weight: bold; margin: 0;">Chi Tiết Người Dùng</h5>
+            </div>
+            <div class="modal-body" style="padding: 20px 24px;">
+                <table class="table table-borderless" style="margin-bottom: 0; width: 100%;">
+                    <tbody>
+                        <tr><td style="width: 35%; color: #94a3b8; padding: 8px 0;">Tài khoản:</td><td id="log-m-username" style="font-weight: 600; padding: 8px 0;"></td></tr>
+                        <tr><td style="color: #94a3b8; padding: 8px 0;">Họ tên:</td><td id="log-m-fullname" style="padding: 8px 0;"></td></tr>
+                        <tr><td style="color: #94a3b8; padding: 8px 0;">Email:</td><td id="log-m-email" style="padding: 8px 0;"></td></tr>
+                        <tr><td style="color: #94a3b8; padding: 8px 0;">Chức vụ:</td><td style="padding: 8px 0;"><span id="log-m-role" class="badge"></span></td></tr>
+                        <tr><td style="color: #94a3b8; padding: 8px 0;">Ngày sinh:</td><td id="log-m-birth" style="padding: 8px 0;"></td></tr>
+                        <tr><td style="color: #94a3b8; padding: 8px 0;">Số điện thoại:</td><td id="log-m-phone" style="padding: 8px 0;"></td></tr>
+                        <tr><td style="color: #94a3b8; padding: 8px 0;">Trạng thái:</td><td style="padding: 8px 0;"><span id="log-m-status" class="badge"></span></td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="modal-footer" style="border-top: 1px solid rgba(255,255,255,0.05); padding: 14px 24px; display: flex; justify-content: flex-end;">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal" style="background: #334155; border: none; padding: 8px 24px; border-radius: 6px; color: #fff; font-weight: 500;">Đóng</button>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const hWheel = document.getElementById('modalHourWheel');
+    const mWheel = document.getElementById('modalMinuteWheel');
+    let isGlobalDragging = false;
+
+    // 1. Sử dụng Intersection Observer để nhận diện số nằm giữa wheel mượt mà
+    function createWheelObserver(wheelNode) {
+        const options = {
+            root: wheelNode,
+            rootMargin: '-40px 0px -40px 0px',
+            threshold: 0.6
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    wheelNode.querySelectorAll('.wheel-number').forEach(el => el.classList.remove('active-ios'));
+                    entry.target.classList.add('active-ios');
+                }
+            });
+        }, options);
+
+        return observer;
+    }
+
+    // 2. Vuốt kéo bằng chuột trên PC
+    function enableMouseDragScroll(wheelNode) {
+    let isDown = false;
+    let startY, scrollTop;
+    let snapTimeout; // Biến tạm để xử lý trễ snap
+
+    wheelNode.addEventListener('mousedown', (e) => {
+        isDown = true;
+        isGlobalDragging = false;
+        clearTimeout(snapTimeout);
+        wheelNode.style.scrollSnapType = 'none'; // Tắt snap khi bắt đầu kéo
+        startY = e.pageY - wheelNode.offsetTop;
+        scrollTop = wheelNode.scrollTop;
+    });
+
+    const stopDragging = () => {
+        if (!isDown) return;
+        isDown = false;
+        
+        // Tạo một khoảng trễ nhỏ trước khi bật lại snap để hành động cuộn kết thúc mượt mà
+        snapTimeout = setTimeout(() => {
+            wheelNode.style.scrollSnapType = 'y mandatory';
+        }, 50); 
+    };
+
+    wheelNode.addEventListener('mouseleave', stopDragging);
+    wheelNode.addEventListener('mouseup', stopDragging);
+
+    wheelNode.addEventListener('mousemove', (e) => {
+        if (!isDown) return;
+        isGlobalDragging = true;
+        const y = e.pageY - wheelNode.offsetTop;
+        const walk = (y - startY) * 1.2; // Bạn có thể chỉnh số 1.2 này lên 1.5 hoặc 2 nếu muốn tốc độ cuộn nhanh hơn
+        wheelNode.scrollTop = scrollTop - walk;
+    });
+}
+
+    // 3. Khởi tạo danh sách số vòng lặp
+    function generateWheelNumbers(wheelNode, totalCount) {
+    const spacerEnd = wheelNode.lastElementChild;
+    const observer = createWheelObserver(wheelNode);
+
+    // Nhân bản làm 3 lần để tạo cảm giác cuộn vô tận
+    for (let loop = 0; loop < 3; loop++) {
+        for (let i = 0; i < totalCount; i++) {
+            const numDiv = document.createElement('div');
+            numDiv.className = 'wheel-number';
+            numDiv.style.cursor = 'pointer';
+            numDiv.style.userSelect = 'none';
+            numDiv.textContent = i.toString().padStart(2, '0');
+            // Lưu lại giá trị gốc và index thực tế để phục vụ logic
+            numDiv.setAttribute('data-val', i); 
+            
+            numDiv.addEventListener('click', function(e) {
+                if (isGlobalDragging) return; 
+                e.stopPropagation();
+                openManualInput(numDiv, wheelNode, totalCount);
+            });
+
+            wheelNode.insertBefore(numDiv, spacerEnd);
+            observer.observe(numDiv);
+        }
+    }
+
+    enableMouseDragScroll(wheelNode);
+    
+    // Kích hoạt tính năng cuộn vô tận cho cột này
+    enableInfiniteScroll(wheelNode, totalCount);
+}
+
+function enableInfiniteScroll(wheelNode, totalCount) {
+    const rowHeight = 30; // Chiều cao của 1 dòng số (px)
+    const groupHeight = totalCount * rowHeight; // Chiều cao của 1 vòng số gốc
+
+    wheelNode.addEventListener('scroll', function() {
+        // Nếu người dùng đang kéo bằng chuột (mousedown), tạm thời không nhảy vị trí để tránh giật
+        if (wheelNode.style.scrollSnapType === 'none') return;
+
+        const currentScroll = wheelNode.scrollTop;
+
+        // Nếu cuộn lên gần kịch đầu (thuộc khu vực vòng 1), nhảy về vòng giữa
+        if (currentScroll < groupHeight - (rowHeight * 2)) {
+            wheelNode.scrollTop = currentScroll + groupHeight;
+        } 
+        // Nếu cuộn xuống gần kịch đuôi (thuộc khu vực vòng 3), nhảy ngược về vòng giữa
+        else if (currentScroll >= (groupHeight * 2) - (rowHeight * 2)) {
+            wheelNode.scrollTop = currentScroll - groupHeight;
+        }
+    });
+}
+    // 4. Nhấp đúp / Click sửa nhanh thủ công
+    function openManualInput(targetNode, wheelNode, maxLimit) {
+        if (targetNode.querySelector('input')) return;
+        const currentVal = targetNode.textContent;
+        targetNode.textContent = '';
+
+        const inputEl = document.createElement('input');
+        inputEl.type = 'number'; inputEl.min = 0; inputEl.max = maxLimit - 1; inputEl.value = parseInt(currentVal);
+        inputEl.style.width = '45px'; inputEl.style.height = '24px'; inputEl.style.background = '#fe2c55';
+        inputEl.style.color = '#ffffff'; inputEl.style.border = 'none'; inputEl.style.borderRadius = '4px';
+        inputEl.style.textAlign = 'center'; inputEl.style.fontSize = '1rem'; inputEl.style.fontWeight = 'bold'; inputEl.style.outline = 'none';
+
+        function saveManualValue() {
+            let inputNum = parseInt(inputEl.value) || 0;
+            if (inputNum < 0) inputNum = 0;
+            if (inputNum >= maxLimit) inputNum = maxLimit - 1;
+            const finalStr = inputNum.toString().padStart(2, '0');
+            targetNode.textContent = finalStr;
+
+            const allNodes = Array.from(wheelNode.querySelectorAll('.wheel-number'));
+            const targetIndex = allNodes.findIndex(node => node.textContent === finalStr);
+            if (targetIndex !== -1) {
+                wheelNode.scrollTo({ top: targetIndex * 30, behavior: 'smooth' });
+            }
+        }
+
+        inputEl.addEventListener('blur', saveManualValue);
+        inputEl.addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); saveManualValue(); } });
+        targetNode.appendChild(inputEl); inputEl.focus(); inputEl.select(); 
+    }
+
+    generateWheelNumbers(hWheel, 24);
+    generateWheelNumbers(mWheel, 60);
+
+    // Reset vị trí cuộn về vị trí đầu khi hiển thị modal
+    // Đưa thanh cuộn về đúng block giữa khi vừa mở Modal lên
+document.getElementById('iphoneTimePickerModal').addEventListener('shown.bs.modal', () => {
+    const rowHeight = 30;
+    // 24 số * 30px = 720px (vị trí bắt đầu của vòng 2 cho giờ)
+    hWheel.scrollTop = 24 * rowHeight; 
+    // 60 số * 30px = 1800px (vị trí bắt đầu của vòng 2 cho phút)
+    mWheel.scrollTop = 60 * rowHeight; 
+}); 
+
+    // Xử lý nút điều khiển Tab và Phím mũi tên Lên / Xuống
+    // Xử lý điều khiển bằng Phím mũi tên VÀ cuộn chuột liên tục không bị đứng
+[hWheel, mWheel].forEach(wheelNode => {
+    // 1. Xử lý khi bấm phím mũi tên Lên/Xuống
+    wheelNode.addEventListener('keydown', function(e) {
+        if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+            e.preventDefault();
+            const step = 30; // Chiều cao 1 dòng
+            const direction = e.key === 'ArrowUp' ? -1 : 1;
+            wheelNode.scrollBy({ top: direction * step, behavior: 'smooth' });
+        }
+    });
+
+    // 2. TỐI ƯU CHÍNH: Xử lý sự kiện lăn chuột liên tục (Fix lỗi đứng hình)
+    // 2. TỐI ƯU TUYỆT ĐỐI: Dùng Virtual Scroll chặn đứng lỗi đứng hình + Giữ hiệu ứng cuộn mượt
+    let isWheelAnimating = false;
+
+    wheelNode.addEventListener('wheel', function(e) {
+        e.preventDefault(); // Chặn đứng hành vi cuộn gốc của trình duyệt (Chống đơ/khóa cuộn)
+
+        // Nếu đang trong hiệu ứng mượt của khấc trước, bỏ qua các góc lăn nhỏ dồn dập
+        if (isWheelAnimating) return; 
+
+        const rowHeight = 30; // Chiều cao 1 dòng số
+        const direction = e.deltaY > 0 ? 1 : -1; // 1 là xuống, -1 là lên
+        
+        // Tính toán vị trí đích tiếp theo (luôn là bội số của 30px để không lệch tâm)
+        let targetScroll = wheelNode.scrollTop + (direction * rowHeight);
+
+        // Bật cờ khóa tạm thời để xử lý animation mượt
+        isWheelAnimating = true;
+
+        // Tắt snap tạm thời để JS tự điều khiển scrollTo smooth không bị khựng
+        wheelNode.style.scrollSnapType = 'none';
+
+        wheelNode.scrollTo({
+            top: targetScroll,
+            behavior: 'smooth' // Giữ hiệu ứng lướt mượt mà của iPhone
+        });
+
+        // Đợi hiệu ứng cuộn mượt (smooth) chạy xong (khoảng 80ms) thì mở khóa và bật lại snap
+        setTimeout(() => {
+            wheelNode.style.scrollSnapType = 'y mandatory';
+            isWheelAnimating = false;
+
+            // Kèm thêm kiểm tra biên an toàn ngầm của Infinite Scroll ngay tại đây
+            const groupHeight = totalCount * rowHeight;
+            const currentScroll = wheelNode.scrollTop;
+            
+            if (currentScroll < groupHeight - (rowHeight * 2)) {
+                wheelNode.scrollTop = currentScroll + groupHeight;
+            } else if (currentScroll >= (groupHeight * 2) - (rowHeight * 2)) {
+                wheelNode.scrollTop = currentScroll - groupHeight;
+            }
+        }, 80); 
+    }, { passive: false }); // Bắt buộc phải là false để chặn e.preventDefault() thành công
+});
+
+    // ================= XỬ LÝ SEARCH TEXT GỐC =================
+    const searchInput = document.getElementById('logSearchInput');
+    const searchBtn = document.getElementById('logSearchBtn');
+
+    function runTextSearch() {
+        const textQuery = searchInput.value.trim().toLowerCase();
+        if (!textQuery) return;
+
+        resetAllHighlights();
+        const items = document.querySelectorAll('.js-timeline-node');
+        let targetMatch = null;
+
+        for (let item of items) {
+            const userAttr = item.getAttribute('data-search-username') || '';
+            const phoneAttr = item.getAttribute('data-search-phone') || '';
+            if (userAttr.includes(textQuery) || phoneAttr.includes(textQuery)) {
+                targetMatch = item; break;
+            }
+        }
+        applyFocusAndHighlight(targetMatch);
+    }
+
+    if (searchBtn) searchBtn.addEventListener('click', runTextSearch);
+    if (searchInput) searchInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); runTextSearch(); } });
+
+    // ================= CHỌN GIỜ TRÊN MODAL VÀ NHẢY TIMELINE =================
+    const modalSubmitBtn = document.getElementById('modalTimeSubmitBtn');
+    if (modalSubmitBtn) {
+        modalSubmitBtn.addEventListener('click', function() {
+            const pickedHour = hWheel.querySelector('.wheel-number.active-ios')?.textContent || "00";
+            const pickedMinute = mWheel.querySelector('.wheel-number.active-ios')?.textContent || "00";
+            const finalTimeQuery = `${pickedHour}:${pickedMinute}`;
+
+            resetAllHighlights();
+            const items = document.querySelectorAll('.js-timeline-node');
+            let matchPerfect = null, matchBackupHour = null;
+
+            for (let item of items) {
+                const timeAttr = item.getAttribute('data-search-time') || '';
+                if (timeAttr === finalTimeQuery) { matchPerfect = item; break; }
+                if (!matchBackupHour && timeAttr.startsWith(pickedHour + ':')) { matchBackupHour = item; }
+            }
+
+            const chosenNode = matchPerfect || matchBackupHour;
+            if (chosenNode) {
+                const currentModal = bootstrap.Modal.getInstance(document.getElementById('iphoneTimePickerModal'));
+                if (currentModal) currentModal.hide();
+                setTimeout(() => { applyFocusAndHighlight(chosenNode); }, 300);
+            } else {
+                alert(`Không tìm thấy nhật ký nào trong khung giờ ${finalTimeQuery}!`);
+            }
+        });
+    }
+
+    // Đưa 2 hàm bổ trợ này nằm gọn gàng bên trong DOMContentLoaded luôn để tránh scope lỗi
+    function resetAllHighlights() {
+        document.querySelectorAll('.js-timeline-node').forEach(node => { node.classList.remove('highlight-match'); });
+    }
+
+    function applyFocusAndHighlight(node) {
+        if (node) {
+            node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            node.classList.add('highlight-match');
+            setTimeout(() => { node.classList.remove('highlight-match'); }, 3600);
+        } else {
+            alert('Không tìm thấy bản ghi phù hợp!');
+        }
+    }
+}); // <--- ĐÂY LÀ DẤU ĐÓNG DUY NHẤT CỦA DOMContentLoaded
+
+// Hàm hiển thị modal thông tin chi tiết user (Nằm độc lập hoàn toàn ở ngoài)
+function showUserDetailFromDataset(element) {
+    document.getElementById('log-m-username').innerText = element.getAttribute('data-username') || 'N/A';
+    document.getElementById('log-m-fullname').innerText = element.getAttribute('data-fullname') || 'N/A';
+    document.getElementById('log-m-email').innerText = element.getAttribute('data-email') || 'N/A';
+    document.getElementById('log-m-birth').innerText = element.getAttribute('data-birth') || 'Chưa cập nhật';
+    document.getElementById('log-m-phone').innerText = element.getAttribute('data-phone') || 'Chưa cập nhật';
+    const backdrop = document.querySelector('.modal-backdrop');
+    if (backdrop) {
+        backdrop.remove();
+    }
+    document.body.classList.remove('modal-open');
+    document.body.style.overflow = '';
+    document.body.style.paddingRight = '';
+    const roleEl = document.getElementById('log-m-role');
+    const roleText = element.getAttribute('data-role');
+    roleEl.innerText = roleText;
+    roleEl.className = 'badge ' + (roleText === 'Quản trị viên' ? 'bg-danger text-light' : 'bg-primary text-light');
+    
+    const statusEl = document.getElementById('log-m-status');
+    const statusText = element.getAttribute('data-status');
+    statusEl.innerText = statusText;
+    statusEl.className = 'badge ' + (statusText === 'ĐANG HOẠT ĐỘNG' ? 'bg-success text-light' : 'bg-secondary text-light');
+    const modalEl = document.getElementById('userLogDetailModal');
+    const myModal = new bootstrap.Modal(modalEl, {
+        backdrop: true,
+        keyboard: true
+    });
+    myModal.show();
+}
+</script>
+{% endblock %}

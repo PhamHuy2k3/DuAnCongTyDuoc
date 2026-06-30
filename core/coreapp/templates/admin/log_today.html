@@ -1,0 +1,127 @@
+{% extends 'admin/admin.html' %}
+{% load static %}
+
+{% block title %}Nhật Ký Hôm Hôm Nay{% endblock %}
+
+{% block page_title %}Hoạt Động Hôm Hôm Nay{% endblock %}
+
+{% block logs_content %}
+<link rel="stylesheet" href="{% static 'coreapp/css/log_today.css' %}">
+<div class="log-search-bar">
+    <input type="text" id="logSearchInput" class="log-search-input" 
+           placeholder="Nhập tài khoản hoặc SĐT tra cứu hành tung...">
+    
+    <div class="search-actions-mobile">
+        <div class="time-modal-trigger" data-bs-toggle="modal" data-bs-target="#iphoneTimePickerModal" title="Tìm theo mốc giờ">
+            ⏱️ Chọn Giờ
+        </div>
+        <button type="button" id="logSearchBtn" class="log-search-btn">Tìm kiếm</button>
+    </div>
+</div>
+
+<div class="timeline-container">
+    <div class="timeline-scroll-area" id="chatArea">
+        <div class="tiktok-timeline">
+            {% for log in logs %}
+            <div class="timeline-node js-timeline-node" 
+                 data-search-username="{{ log.user.username|lower }}"
+                 data-search-phone="{{ log.user.phone_number|default:'' }}"
+                 data-search-time="{{ log.timestamp|date:'H:i' }}">
+                <div class="timeline-content">
+                    <div class="timeline-time">
+                        <span class="js-time-text">⏱️ {{ log.timestamp|date:"H:i:s" }}</span>
+                        <span style="color: rgba(255,255,255,0.15);">|</span>
+                        <span>{{ log.timestamp|date:"d/m/Y" }}</span>
+                    </div>
+                    
+                    <div class="timeline-action">
+                        {% if log.user %}
+                        <a href="javascript:void(0);" class="timeline-user-link"
+                           data-username="{{ log.user.username }}"
+                           data-email="{{ log.user.email }}"
+                           data-fullname="{{ log.user.get_full_name|default:log.user.username }}"
+                           data-role="{% if log.user.is_superuser %}Quản trị viên{% else %}Người dùng{% endif %}"
+                           data-birth="{% if log.user.birth_date %}{{ log.user.birth_date|date:'d/m/Y' }}{% else %}Chưa cập nhật{% endif %}"
+                           data-phone="{{ log.user.phone_number|default:'Chưa cập nhật' }}"
+                           data-status="{% if log.user.is_active %}Đang hoạt động{% else %}Đang bị khóa{% endif %}"
+                           onclick="showUserDetailFromDataset(this)">
+                             @{{ log.user.username }}
+                        </a>
+                        {% else %}
+                        <span style="color: #64748b; font-weight: 600;">Hệ thống tự động</span>
+                        {% endif %}
+                        
+                        <span style="margin-left: 4px;">{{ log.action }}</span>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 300px; color: #475569; width: 100%;">
+                <span style="font-size: 3rem; margin-bottom: 10px;">📦</span>
+                <p style="text-align: center; padding: 0 15px;">Hành trình trống. Chưa ghi nhận hoạt động nào hôm nay.</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+        <div class="modal fade" id="iphoneTimePickerModal" tabindex="-1" aria-hidden="true" style="z-index: 10000;">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 340px; margin: auto;">
+        <div class="modal-content" style="background: #1e293b; border: 1px solid #334155; color: #f8fafc; border-radius: 12px;">
+            <div class="modal-header" style="border-bottom: 1px solid rgba(255,255,255,0.05); padding: 16px 20px;">
+                <h6 class="modal-title" style="color: #fe2c55; font-weight: bold; margin: 0;">Chọn giờ cần tìm</h6>
+            </div>
+            <div class="modal-body" style="padding: 15px 20px;">
+                <p style="font-size: 0.85rem; color: #94a3b8; text-align: center; margin: 0 0 10px 0;">Bấm vào số để sửa nhanh hoặc cuộn để chỉnh </p>
+                
+                <div class="iphone-picker-box">
+    <div class="ios-wheel-column" id="modalHourWheel" tabindex="0">
+        <div class="wheel-spacer"></div>
+        <div class="wheel-spacer"></div>
+    </div>
+    
+    <div class="picker-dots">:</div>
+    
+    <div class="ios-wheel-column" id="modalMinuteWheel" tabindex="0">
+        <div class="wheel-spacer"></div>
+        <div class="wheel-spacer"></div>
+    </div>
+</div>
+            </div>
+            <div class="modal-footer" style="border-top: 1px solid rgba(255,255,255,0.05); padding: 12px 20px; display: flex; gap: 10px;">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal" style="background: #334155; border: none; flex: 1; padding: 10px 0; border-radius: 6px;">Hủy bỏ</button>
+                <button type="button" id="modalTimeSubmitBtn" class="btn btn-sm" style="background: #fe2c55; color: white; flex: 1; padding: 10px 0; border-radius: 6px; font-weight: 600;">Xác nhận</button>
+            </div>
+        </div>
+    </div>
+</div>
+    <div class="modal fade" id="userLogDetailModal" tabindex="-1" aria-hidden="true" style="z-index: 10005;">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 480px; width: 100%;">
+        <div class="modal-content" style="background: #1e293b; border: 1px solid rgba(255,255,255,0.1); color: #f8fafc; box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.7); border-radius: 12px;">
+            <div class="modal-header" style="border-bottom: 1px solid rgba(255,255,255,0.05); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center;">
+                <h5 class="modal-title" style="color: #fe2c55; font-weight: bold; margin: 0;">Chi Tiết Người Dùng</h5>
+            </div>
+            <div class="modal-body" style="padding: 20px 24px;">
+                <table class="table table-borderless" style="margin-bottom: 0; width: 100%;">
+                    <tbody>
+                        <tr><td style="width: 35%; color: #94a3b8; padding: 8px 0;">Tài khoản:</td><td id="log-m-username" style="font-weight: 600; padding: 8px 0;"></td></tr>
+                        <tr><td style="color: #94a3b8; padding: 8px 0;">Họ tên:</td><td id="log-m-fullname" style="padding: 8px 0;"></td></tr>
+                        <tr><td style="color: #94a3b8; padding: 8px 0;">Email:</td><td id="log-m-email" style="padding: 8px 0;"></td></tr>
+                        <tr><td style="color: #94a3b8; padding: 8px 0;">Chức vụ:</td><td style="padding: 8px 0;"><span id="log-m-role" class="badge"></span></td></tr>
+                        <tr><td style="color: #94a3b8; padding: 8px 0;">Ngày sinh:</td><td id="log-m-birth" style="padding: 8px 0;"></td></tr>
+                        <tr><td style="color: #94a3b8; padding: 8px 0;">Số điện thoại:</td><td id="log-m-phone" style="padding: 8px 0;"></td></tr>
+                        <tr><td style="color: #94a3b8; padding: 8px 0;">Trạng thái:</td><td style="padding: 8px 0;"><span id="log-m-status" class="badge"></span></td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="modal-footer" style="border-top: 1px solid rgba(255,255,255,0.05); padding: 14px 24px; display: flex; justify-content: flex-end;">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal" style="background: #334155; border: none; padding: 8px 24px; border-radius: 6px; color: #fff; font-weight: 500;">Đóng</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="{% static 'coreapp/js/log_today.js' %}"></script>
+
+
+{% endblock %}

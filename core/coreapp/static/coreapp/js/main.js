@@ -19,45 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ==========================================================================
-    // 2. MOBILE MENU TOGGLE
-    // ==========================================================================
-    const mobileToggle = document.getElementById('mobile-menu-toggle');
-    const navMenu = document.getElementById('nav-navigation');
-    if (mobileToggle && navMenu) {
-        mobileToggle.addEventListener('click', () => {
-            navMenu.classList.toggle('open');
-            mobileToggle.classList.toggle('open');
-        });
-        // Close menu on link click
-        navMenu.querySelectorAll('.nav-link').forEach(link => {
-            link.addEventListener('click', () => {
-                navMenu.classList.remove('open');
-                mobileToggle.classList.remove('open');
-            });
-        });
-    }
-
-    // ==========================================================================
-    // 3. USER DROPDOWN TOGGLE
-    // ==========================================================================
-    const dropdownTrigger = document.getElementById('user-dropdown-trigger');
-    const dropdownMenu = document.getElementById('user-dropdown-menu');
-    if (dropdownTrigger && dropdownMenu) {
-        dropdownTrigger.addEventListener('click', (e) => {
-            e.stopPropagation();
-            dropdownMenu.classList.toggle('open');
-            dropdownTrigger.classList.toggle('open');
-        });
-        document.addEventListener('click', (e) => {
-            if (!dropdownTrigger.contains(e.target) && !dropdownMenu.contains(e.target)) {
-                dropdownMenu.classList.remove('open');
-                dropdownTrigger.classList.remove('open');
-            }
-        });
-    }
-
-    // ==========================================================================
-    // 4. AUTHENTICATION (LOGIN / REGISTER) INTERACTIVE LOGIC
+    // 2. AUTHENTICATION (LOGIN / REGISTER) INTERACTIVE LOGIC
     // ==========================================================================
     const demoOpBtn = document.getElementById('btn-demo-operator');
     const demoAdminBtn = document.getElementById('btn-demo-admin');
@@ -115,7 +77,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ==========================================================================
-    // 5. ADMIN DASHBOARD SYSTEM INTERACTIONS
+    // 3. ADMIN DASHBOARD SYSTEM INTERACTIONS
     // ==========================================================================
     const sidebarMenuItems = document.querySelectorAll('.db-menu-item');
     const tabPanes = document.querySelectorAll('.db-tab-pane');
@@ -308,7 +270,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     // ==========================================================================
-    // 6. SCAN PAGE SCANNER ENGINE & INTERACTION
+    // 4. SCAN PAGE SCANNER ENGINE & INTERACTION
     // ==========================================================================
     const dropzone = document.getElementById('document-dropzone');
     if (!dropzone) return; // Exit if not on scanning page
