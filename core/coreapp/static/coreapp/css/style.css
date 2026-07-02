@@ -2782,3 +2782,7 @@ button, input, textarea {
     }
 }
 
+. f o r m - g r i d - 3   {   d i s p l a y :   g r i d ;   g r i d - t e m p l a t e - c o l u m n s :   r e p e a t ( 3 ,   1 f r ) ;   g a p :   1 6 p x ;   }   @ m e d i a   ( m a x - w i d t h :   7 6 8 p x )   {   . f o r m - g r i d - 3   {   g r i d - t e m p l a t e - c o l u m n s :   1 f r ;   }   }  
+ 
+.action-icon { width: 24px; height: 24px; margin-right: 12px; }
+.scan-actions .btn-large { max-height: 60px; display: flex; align-items: center; justify-content: center; flex-direction: row; }

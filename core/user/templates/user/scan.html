@@ -4,6 +4,9 @@
 {% block title %}Trải nghiệm Quét Tự động hóa Nhập liệu | PharmaScan{% endblock %}
 
 {% block extra_head %}
+<!-- Tesseract.js for Client-Side OCR -->
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
 <style>
     /* Custom Styling for Lab Receipt Photo Scanner Mockup */
     .receipt-mockup-wrapper {
@@ -276,7 +279,7 @@
 
                     <!-- Dropzone Container -->
                     <div class="dropzone" id="document-dropzone" style="height: 240px; margin-bottom: 12px;">
-                        <input type="file" id="file-input" class="hidden-input" accept=".docx,.doc,.pdf,.txt,.jpg,.jpeg,.png">
+                        <input type="file" id="file-input" class="hidden-input" accept=".docx,.doc,.pdf,.txt,.jpg,.jpeg,.png" multiple>
                         
                         <!-- A. Dropzone Empty / Prompt state -->
                         <div class="dropzone-content" id="dropzone-prompt">
@@ -316,14 +319,27 @@
                             </div>
                         </div>
 
-                        <!-- C. Photo Loaded State (HTML/CSS Simulated Balance Receipt) -->
-                        <div class="file-loaded-state hidden" id="file-photo-loaded-view">
+                        <!-- C. Photo Loaded State (HTML/CSS Simulated Balance Receipt & Real Preview) -->
+                        <div class="file-loaded-state hidden" id="file-photo-loaded-view" style="flex-direction: column; align-items: stretch; justify-content: flex-start; padding: 8px;">
                             <!-- Reset file button for photo view -->
-                            <button class="btn-remove-file" id="btn-reset-photo" title="Xóa ảnh" style="position: absolute; top: 12px; right: 12px; z-index: 100;">
+                            <button class="btn-remove-file" id="btn-reset-photo" title="Xóa ảnh" style="position: absolute; top: 8px; right: 8px; z-index: 100;">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px; height:12px;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                             </button>
+
+                            <!-- Toggle View Mode Bar -->
+                            <div class="view-toggle-bar" style="display: flex; justify-content: flex-start; gap: 6px; margin-bottom: 8px; z-index: 50; position: relative; padding-right: 30px;">
+                                <button type="button" id="btn-toggle-real-img" class="btn-template active" style="padding: 4px 10px; font-size: 0.72rem; border-radius: 4px; margin: 0;">Ảnh gốc</button>
+                                <button type="button" id="btn-toggle-sim-ocr" class="btn-template" style="padding: 4px 10px; font-size: 0.72rem; border-radius: 4px; margin: 0;">Dữ liệu số hóa</button>
+                            </div>
+
+                            <!-- Real Image Preview -->
+                            <div id="real-image-preview-container" style="width: 100%; height: 175px; display: flex; align-items: center; justify-content: center; position: relative; background: rgba(0,0,0,0.15); border-radius: 4px; overflow: hidden;">
+                                <img id="real-image-preview" src="" style="max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 4px;">
+                                <div class="scan-laser-line hidden" id="real-image-laser-line" style="background: linear-gradient(90deg, transparent, var(--accent), transparent); box-shadow: 0 0 14px 4px var(--accent);"></div>
+                            </div>
                             
-                            <div class="receipt-mockup-wrapper">
+                            <!-- Simulated Receipt Bounding Box Mockup -->
+                            <div class="receipt-mockup-wrapper hidden" style="width: 100%; max-height: 175px !important; margin: 0;">
                                 <div class="receipt-paper" id="receipt-paper-ocr">
                                     <div class="handwritten-header">
                                         <span class="handwritten-text">DDKL - 03</span>
@@ -446,6 +462,20 @@
                                     <div class="scan-laser-line hidden" id="photo-laser-line" style="background: linear-gradient(90deg, transparent, var(--accent), transparent); box-shadow: 0 0 14px 4px var(--accent);"></div>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- Batch Upload Queue Panel -->
+                    <div id="batch-queue-container" class="hidden" style="margin-bottom: 16px; border: 1px solid var(--surface-border); border-radius: var(--border-radius-sm); padding: 14px; background: rgba(0, 0, 0, 0.2); backdrop-filter: blur(10px);">
+                        <h5 style="font-size: 0.82rem; font-weight: 700; color: var(--text-primary); margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 6px;">
+                            <span style="display: flex; align-items: center; gap: 6px;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width: 14px; height: 14px; color: var(--accent);"><path d="M4 14h6v6H4zm10 0h6v6h-6zM4 4h6v6H4zm10 0h6v6h-6z"/></svg>
+                                Hàng đợi quét ảnh liên tục
+                            </span>
+                            <span id="queue-count" style="font-size: 0.76rem; color: var(--accent); font-weight: 700;">0 tệp</span>
+                        </h5>
+                        <div id="queue-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 160px; overflow-y: auto; padding-right: 4px;">
+                            <!-- Dynamic items -->
                         </div>
                     </div>
 
@@ -601,48 +631,82 @@
                             <span class="status-badge" id="photo-status-badge">Đang chờ quét...</span>
                         </div>
                         
-                        <form id="weight-uniformity-form" class="medical-form" onsubmit="event.preventDefault();">
-                            <!-- 20 pills weights input matrix -->
-                            <div class="pills-input-grid">
-                                <!-- Pills 1 to 20 -->
-                                <div class="pill-group"><span class="pill-label">V1</span><input type="text" id="w1" class="form-input pill-input" readonly placeholder="-"><span class="extraction-indicator" id="ind-w1" style="right: auto; left: 4px; bottom: 4px; width:6px; height:6px;"></span></div>
-                                <div class="pill-group"><span class="pill-label">V2</span><input type="text" id="w2" class="form-input pill-input" readonly placeholder="-"><span class="extraction-indicator" id="ind-w2" style="right: auto; left: 4px; bottom: 4px; width:6px; height:6px;"></span></div>
-                                <div class="pill-group"><span class="pill-label">V3</span><input type="text" id="w3" class="form-input pill-input" readonly placeholder="-"><span class="extraction-indicator" id="ind-w3" style="right: auto; left: 4px; bottom: 4px; width:6px; height:6px;"></span></div>
-                                <div class="pill-group"><span class="pill-label">V4</span><input type="text" id="w4" class="form-input pill-input" readonly placeholder="-"><span class="extraction-indicator" id="ind-w4" style="right: auto; left: 4px; bottom: 4px; width:6px; height:6px;"></span></div>
-                                <div class="pill-group"><span class="pill-label">V5</span><input type="text" id="w5" class="form-input pill-input" readonly placeholder="-"><span class="extraction-indicator" id="ind-w5" style="right: auto; left: 4px; bottom: 4px; width:6px; height:6px;"></span></div>
-                                <div class="pill-group"><span class="pill-label">V6</span><input type="text" id="w6" class="form-input pill-input" readonly placeholder="-"><span class="extraction-indicator" id="ind-w6" style="right: auto; left: 4px; bottom: 4px; width:6px; height:6px;"></span></div>
-                                <div class="pill-group"><span class="pill-label">V7</span><input type="text" id="w7" class="form-input pill-input" readonly placeholder="-"><span class="extraction-indicator" id="ind-w7" style="right: auto; left: 4px; bottom: 4px; width:6px; height:6px;"></span></div>
-                                <div class="pill-group"><span class="pill-label">V8</span><input type="text" id="w8" class="form-input pill-input" readonly placeholder="-"><span class="extraction-indicator" id="ind-w8" style="right: auto; left: 4px; bottom: 4px; width:6px; height:6px;"></span></div>
-                                <div class="pill-group"><span class="pill-label">V9</span><input type="text" id="w9" class="form-input pill-input" readonly placeholder="-"><span class="extraction-indicator" id="ind-w9" style="right: auto; left: 4px; bottom: 4px; width:6px; height:6px;"></span></div>
-                                <div class="pill-group"><span class="pill-label">V10</span><input type="text" id="w10" class="form-input pill-input" readonly placeholder="-"><span class="extraction-indicator" id="ind-w10" style="right: auto; left: 4px; bottom: 4px; width:6px; height:6px;"></span></div>
-                                
-                                <div class="pill-group"><span class="pill-label">V11</span><input type="text" id="w11" class="form-input pill-input" readonly placeholder="-"><span class="extraction-indicator" id="ind-w11" style="right: auto; left: 4px; bottom: 4px; width:6px; height:6px;"></span></div>
-                                <div class="pill-group"><span class="pill-label">V12</span><input type="text" id="w12" class="form-input pill-input" readonly placeholder="-"><span class="extraction-indicator" id="ind-w12" style="right: auto; left: 4px; bottom: 4px; width:6px; height:6px;"></span></div>
-                                <div class="pill-group"><span class="pill-label">V13</span><input type="text" id="w13" class="form-input pill-input" readonly placeholder="-"><span class="extraction-indicator" id="ind-w13" style="right: auto; left: 4px; bottom: 4px; width:6px; height:6px;"></span></div>
-                                <div class="pill-group"><span class="pill-label">V14</span><input type="text" id="w14" class="form-input pill-input" readonly placeholder="-"><span class="extraction-indicator" id="ind-w14" style="right: auto; left: 4px; bottom: 4px; width:6px; height:6px;"></span></div>
-                                <div class="pill-group"><span class="pill-label">V15</span><input type="text" id="w15" class="form-input pill-input" readonly placeholder="-"><span class="extraction-indicator" id="ind-w15" style="right: auto; left: 4px; bottom: 4px; width:6px; height:6px;"></span></div>
-                                <div class="pill-group"><span class="pill-label">V16</span><input type="text" id="w16" class="form-input pill-input" readonly placeholder="-"><span class="extraction-indicator" id="ind-w16" style="right: auto; left: 4px; bottom: 4px; width:6px; height:6px;"></span></div>
-                                <div class="pill-group"><span class="pill-label">V17</span><input type="text" id="w17" class="form-input pill-input" readonly placeholder="-"><span class="extraction-indicator" id="ind-w17" style="right: auto; left: 4px; bottom: 4px; width:6px; height:6px;"></span></div>
-                                <div class="pill-group"><span class="pill-label">V18</span><input type="text" id="w18" class="form-input pill-input" readonly placeholder="-"><span class="extraction-indicator" id="ind-w18" style="right: auto; left: 4px; bottom: 4px; width:6px; height:6px;"></span></div>
-                                <div class="pill-group"><span class="pill-label">V19</span><input type="text" id="w19" class="form-input pill-input" readonly placeholder="-"><span class="extraction-indicator" id="ind-w19" style="right: auto; left: 4px; bottom: 4px; width:6px; height:6px;"></span></div>
-                                <div class="pill-group"><span class="pill-label">V20</span><input type="text" id="w20" class="form-input pill-input" readonly placeholder="-"><span class="extraction-indicator" id="ind-w20" style="right: auto; left: 4px; bottom: 4px; width:6px; height:6px;"></span></div>
+                        <!-- Premium Scan Status Dashboard & Guide -->
+                        <div class="ocr-status-dashboard" style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--surface-border); border-radius: 8px; padding: 14px; margin: 16px 0 0 0;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width: 14px; height: 14px; color: var(--accent);"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                                    Tiến trình ghép mẫu (20 viên)
+                                </span>
+                                <span id="session-stitch-counter" style="font-size: 0.75rem; font-weight: 700; color: var(--accent);">0 / 20 viên hoàn tất</span>
                             </div>
                             
-                            <!-- Calculations Box Statistics -->
-                            <div class="stats-card-box">
-                                <div class="stat-mini-group">
-                                    <span class="stat-mini-label">Trung Bình (Mean)</span>
-                                    <span class="stat-mini-val" id="val-mean" style="color: var(--primary);">--</span>
+                            <!-- 20 Pills progress visualization grid -->
+                            <div id="pill-progress-grid" style="display: grid; grid-template-columns: repeat(10, 1fr); gap: 6px; margin-bottom: 10px;">
+                                <!-- Will be rendered dynamically via JS -->
+                            </div>
+
+                            <div class="collapsible-guide-card" style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px; margin-top: 8px;">
+                                <details style="outline: none; cursor: pointer;">
+                                    <summary style="font-size: 0.72rem; font-weight: 600; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center; list-style: none;">
+                                        <span>💡 Hướng dẫn chụp quét & ghép dữ liệu gối đầu</span>
+                                        <span style="font-size: 0.65rem; color: var(--accent); font-weight: 700;">Xem chi tiết ▾</span>
+                                    </summary>
+                                    <div style="font-size: 0.72rem; color: var(--text-muted); line-height: 1.45; padding-top: 8px; display: flex; flex-direction: column; gap: 6px; pointer-events: none;">
+                                        <p style="margin: 0;">• <strong>Độc lập tuyệt đối giữa 2 cột:</strong> Hệ thống đọc độc lập 2 dải giấy cân, tuyệt đối không tự ý nối chéo dữ liệu qua lại.</p>
+                                        <p style="margin: 0;">• <strong>Chụp gối đầu nhiều ảnh:</strong> Tải nhiều ảnh kế tiếp có phần đè lên nhau, hệ thống tự lọc trùng và chắp vá các hàng khuyết biên thành trọn vẹn.</p>
+                                        <p style="margin: 0;">• <strong>Sửa tay trực tiếp:</strong> Nhấp vào bất kỳ ô nào (Cân nặng, Ngày giờ, SNR) trong bảng để tự sửa nhanh nếu AI nhận diện nhầm.</p>
+                                    </div>
+                                </details>
+                            </div>
+                        </div>
+
+                        <form id="weight-uniformity-form" class="medical-form" onsubmit="event.preventDefault();">
+                            <!-- Toolbar Bảng Dữ liệu -->
+                            <div class="table-toolbar" style="display: flex; justify-content: space-between; gap: 12px; margin-bottom: 12px; flex-wrap: wrap;">
+                                <div class="table-search" style="flex: 1; min-width: 200px;">
+                                    <input type="text" id="table-search-input" class="form-input" placeholder="Tìm kiếm khối lượng..." style="width: 100%; padding: 8px 12px; font-size: 0.85rem;">
                                 </div>
-                                <div class="stat-mini-group" style="border-left: 1px solid var(--surface-border); border-right: 1px solid var(--surface-border); padding: 0 10px;">
-                                    <span class="stat-mini-label">Độ lệch (RSD%)</span>
-                                    <span class="stat-mini-val" id="val-rsd" style="color: #8b5cf6;">--</span>
-                                </div>
-                                <div class="stat-mini-group">
-                                    <span class="stat-mini-label">Kết Luận Dược Điển</span>
-                                    <span class="stat-mini-val" id="val-result" style="font-size: 0.9rem; text-transform: uppercase;">Chờ dữ liệu</span>
+                                <div class="table-filter" style="width: 150px;">
+                                    <select id="table-filter-select" class="form-input" style="width: 100%; padding: 8px 12px; font-size: 0.85rem;">
+                                        <option value="all">Tất cả</option>
+                                        <option value="valid">Hợp lệ</option>
+                                        <option value="invalid">Không hợp lệ</option>
+                                    </select>
                                 </div>
                             </div>
+
+                            <!-- Data Table -->
+                            <div class="data-table-container" style="overflow-x: auto; border: 1px solid var(--surface-border); border-radius: 8px; margin-bottom: 12px;">
+                                <table class="data-table" id="weights-data-table" style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.85rem;">
+                                    <thead style="background: rgba(15, 23, 42, 0.4); color: #94a3b8; border-bottom: 1px solid var(--surface-border);">
+                                        <tr>
+                                            <th style="padding: 10px 16px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">STT</th>
+                                            <th style="padding: 10px 16px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Khối lượng (g)</th>
+                                            <th style="padding: 10px 16px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Ngày giờ</th>
+                                            <th style="padding: 10px 16px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Balance Type</th>
+                                            <th style="padding: 10px 16px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">SNR</th>
+                                            <th style="padding: 10px 16px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Trạng thái</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="table-body">
+                                        <!-- Rows render dynamically via JS -->
+                                        <tr><td colspan="6" style="text-align: center; padding: 20px; color: var(--text-muted);">Chưa có dữ liệu</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- Pagination -->
+                            <div class="table-pagination" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; font-size: 0.8rem;">
+                                <span style="color: var(--text-muted);" id="pagination-info">Hiển thị 0 bản ghi</span>
+                                <div class="pagination-controls" style="display: flex; gap: 4px;">
+                                    <button type="button" id="btn-prev-page" class="btn btn-secondary" style="padding: 4px 10px; min-height: auto; font-size: 0.8rem;" disabled>Trước</button>
+                                    <span id="page-indicator" style="padding: 4px 10px; display: inline-flex; align-items: center; color: var(--text-primary); font-weight: 600;">1 / 1</span>
+                                    <button type="button" id="btn-next-page" class="btn btn-secondary" style="padding: 4px 10px; min-height: auto; font-size: 0.8rem;" disabled>Sau</button>
+                                </div>
+                            </div>
+                            
+                            <!-- Statistics removed per user request -->
                             
                             <!-- Sync action trigger -->
                             <div class="form-submit-actions">

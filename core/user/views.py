@@ -5,10 +5,17 @@ from django.utils import timezone
 from django.db.models import Count, Q, Avg
 from django.contrib.auth import update_session_auth_hash
 from django.contrib import messages
+from django.conf import settings
+from django.views.decorators.csrf import csrf_exempt
+from django.core.exceptions import ValidationError
 from .models import ScannedDocument, MedicineItem
+from .services import process_image, validate_image_file, extract_balance_receipt_records
 import json
 import os
 import re
+import logging
+
+logger = logging.getLogger('user')
 
 
 def home(request):
@@ -16,7 +23,88 @@ def home(request):
 
 
 def scan_demo(request):
-    return render(request, 'user/scan.html')
+    fields = [
+        {'name': 'trade_name', 'label': 'Tên thương mại', 'required': True},
+        {'name': 'active_ingredient', 'label': 'Hoạt chất chính', 'required': True},
+        {'name': 'strength', 'label': 'Hàm lượng / Nồng độ', 'required': False},
+        {'name': 'dosage_form', 'label': 'Dạng bào chế', 'required': False},
+        {'name': 'manufacturer', 'label': 'Nhà sản xuất', 'required': True},
+        {'name': 'batch_number', 'label': 'Số lô sản xuất', 'required': True},
+        {'name': 'registration_number', 'label': 'Số đăng ký lưu hành', 'required': False},
+        {'name': 'mfg_date', 'label': 'Ngày sản xuất', 'required': False},
+        {'name': 'exp_date', 'label': 'Hạn sử dụng', 'required': True},
+        {'name': 'indications', 'label': 'Chỉ định điều trị', 'required': False},
+    ]
+    return render(request, 'user/scan.html', {'fields': fields})
+
+
+@login_required(login_url='login')
+def upload_document(request):
+    if request.method != 'POST':
+        logger.warning(f"Invalid method {request.method} for upload_document")
+        return JsonResponse({'success': False, 'error': 'Chỉ hỗ trợ phương thức POST'}, status=405)
+
+    if 'file' not in request.FILES:
+        return JsonResponse({'success': False, 'error': 'Vui lòng chọn file để tải lên'}, status=400)
+
+    uploaded_file = request.FILES['file']
+
+    try:
+        # Validate image file
+        validate_image_file(uploaded_file)
+        
+        # Save file
+        upload_dir = os.path.join(settings.MEDIA_ROOT, 'uploads', str(request.user.id))
+        os.makedirs(upload_dir, exist_ok=True)
+
+        file_path = os.path.join(upload_dir, uploaded_file.name)
+        with open(file_path, 'wb+') as f:
+            for chunk in uploaded_file.chunks():
+                f.write(chunk)
+
+        # Process image với OCR
+        extracted = process_image(file_path)
+        
+        # Create Medicine record
+        medicine = MedicineItem.objects.create(
+            trade_name=extracted['data'].get('trade_name', ''),
+            active_ingredient=extracted['data'].get('active_ingredient', ''),
+            strength=extracted['data'].get('strength', ''),
+            dosage_form=extracted['data'].get('dosage_form', ''),
+            manufacturer=extracted['data'].get('manufacturer', ''),
+            batch_number=extracted['data'].get('batch_number', ''),
+            registration_number=extracted['data'].get('registration_number', ''),
+            mfg_date=extracted['data'].get('mfg_date', ''),
+            exp_date=extracted['data'].get('exp_date', ''),
+            indications=extracted['data'].get('indications', ''),
+        )
+
+        # Create ScannedDocument record
+        doc = ScannedDocument.objects.create(
+            user=request.user,
+            medicine=medicine,
+            file_name=uploaded_file.name,
+            accuracy_score=extracted['accuracy'],
+            status='pending',
+        )
+        
+        logger.info(f"User {request.user.username} uploaded image {uploaded_file.name}, OCR engine: {extracted.get('ocr_engine')}")
+
+        return JsonResponse({
+            'success': True,
+            'doc_id': doc.id,
+            'data': extracted['data'],
+            'accuracy': extracted['accuracy'],
+            'ocr_engine': extracted.get('ocr_engine', 'unknown'),
+            'message': 'Quét ảnh thành công!'
+        })
+        
+    except ValidationError as e:
+        logger.warning(f"Validation error: {str(e)}")
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
+    except Exception as e:
+        logger.error(f"Error processing upload: {str(e)}")
+        return JsonResponse({'success': False, 'error': f'Lỗi xử lý ảnh: {str(e)}'}, status=500)
 
 
 def login_view(request):
@@ -29,39 +117,45 @@ def register_view(request):
 
 @login_required(login_url='login')
 def dashboard_view(request):
-    docs = ScannedDocument.objects.filter(user=request.user)
-    medicines = MedicineItem.objects.filter(
-        scanneddocument__user=request.user
-    ).distinct()
+    try:
+        docs = ScannedDocument.objects.filter(user=request.user).select_related('medicine', 'reviewed_by')
+        medicines = MedicineItem.objects.filter(
+            scanneddocument__user=request.user
+        ).distinct()
 
-    total_scans = docs.count()
-    pending_count = docs.filter(status='pending').count()
-    approved_count = docs.filter(status='approved').count()
-    rejected_count = docs.filter(status='rejected').count()
+        total_scans = docs.count()
+        pending_count = docs.filter(status='pending').count()
+        approved_count = docs.filter(status='approved').count()
+        rejected_count = docs.filter(status='rejected').count()
 
-    latest_docs = docs.order_by('-scanned_at')[:10]
-    pending_docs = docs.filter(status='pending').order_by('-scanned_at')
-    approved_medicines = MedicineItem.objects.filter(
-        scanneddocument__user=request.user,
-        scanneddocument__status='approved'
-    ).distinct().order_by('-created_at')
+        latest_docs = docs.order_by('-scanned_at')[:10]
+        pending_docs = docs.filter(status='pending').order_by('-scanned_at')[:20]
+        approved_medicines = MedicineItem.objects.filter(
+            scanneddocument__user=request.user,
+            scanneddocument__status='approved'
+        ).distinct().order_by('-created_at')[:20]
 
-    avg_accuracy = 0
-    if total_scans > 0:
-        avg_accuracy = docs.filter(accuracy_score__gt=0).aggregate(Avg('accuracy_score'))['accuracy_score__avg'] or 0
-        avg_accuracy = round(avg_accuracy, 1)
+        avg_accuracy = 0
+        if total_scans > 0:
+            avg_accuracy = docs.filter(accuracy_score__gt=0).aggregate(Avg('accuracy_score'))['accuracy_score__avg'] or 0
+            avg_accuracy = round(avg_accuracy, 1)
 
-    context = {
-        'total_scans': total_scans,
-        'pending_count': pending_count,
-        'approved_count': approved_count,
-        'rejected_count': rejected_count,
-        'avg_accuracy': avg_accuracy,
-        'latest_docs': latest_docs,
-        'pending_docs': pending_docs,
-        'approved_medicines': approved_medicines,
-    }
-    return render(request, 'user/dashboard.html', context)
+        context = {
+            'total_scans': total_scans,
+            'pending_count': pending_count,
+            'approved_count': approved_count,
+            'rejected_count': rejected_count,
+            'avg_accuracy': avg_accuracy,
+            'latest_docs': latest_docs,
+            'pending_docs': pending_docs,
+            'approved_medicines': approved_medicines,
+        }
+        return render(request, 'user/dashboard.html', context)
+        
+    except Exception as e:
+        logger.error(f"Error loading dashboard: {str(e)}")
+        messages.error(request, "Không thể tải dữ liệu dashboard")
+        return render(request, 'user/dashboard.html', {})
 
 
 @login_required(login_url='login')
@@ -199,3 +293,34 @@ def coa_view(request):
         form1_content = form1_content.replace(page_html, multi_pages_html)
 
     return HttpResponse(form1_content)
+
+
+@csrf_exempt
+@login_required(login_url='login')
+def scan_receipt_api(request):
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Chỉ hỗ trợ phương thức POST'}, status=405)
+        
+    if 'image' not in request.FILES:
+        return JsonResponse({'success': False, 'error': 'Vui lòng chọn file để tải lên'}, status=400)
+        
+    uploaded_file = request.FILES['image']
+    
+    try:
+        uploaded_file.seek(0)
+        records = extract_balance_receipt_records(uploaded_file)
+
+        if not records:
+            return JsonResponse({
+                'success': False,
+                'error': 'Không tìm thấy dữ liệu cân theo cấu trúc 2 cột trong ảnh. Vui lòng thử ảnh rõ hơn hoặc ảnh chụp trọn phiếu.'
+            }, status=422)
+        
+        return JsonResponse({
+            'success': True,
+            'records': records
+        })
+        
+    except Exception as e:
+        logger.error(f"Error processing receipt vision OCR: {str(e)}")
+        return JsonResponse({'success': False, 'error': f'Lỗi hệ thống: {str(e)}'}, status=500)

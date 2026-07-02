@@ -353,6 +353,42 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnSyncCoa = document.getElementById('btn-sync-coa');
     const photoLaserLine = document.getElementById('photo-laser-line');
     
+    // Toggle view components
+    const btnToggleRealImg = document.getElementById('btn-toggle-real-img');
+    const btnToggleSimOcr = document.getElementById('btn-toggle-sim-ocr');
+    const realImgContainer = document.getElementById('real-image-preview-container');
+    const simOcrContainer = document.querySelector('.receipt-mockup-wrapper');
+    const realLaserLine = document.getElementById('real-image-laser-line');
+
+    function showLaserLines() {
+        const realImgVisible = realImgContainer && !realImgContainer.classList.contains('hidden');
+        if (realImgVisible && realLaserLine) {
+            realLaserLine.classList.remove('hidden');
+        } else if (photoLaserLine) {
+            photoLaserLine.classList.remove('hidden');
+        }
+    }
+
+    function hideLaserLines() {
+        if (realLaserLine) realLaserLine.classList.add('hidden');
+        if (photoLaserLine) photoLaserLine.classList.add('hidden');
+    }
+
+    if (btnToggleRealImg && btnToggleSimOcr && realImgContainer && simOcrContainer) {
+        btnToggleRealImg.addEventListener('click', () => {
+            btnToggleRealImg.classList.add('active');
+            btnToggleSimOcr.classList.remove('active');
+            realImgContainer.classList.remove('hidden');
+            simOcrContainer.classList.add('hidden');
+        });
+
+        btnToggleSimOcr.addEventListener('click', () => {
+            btnToggleSimOcr.classList.add('active');
+            btnToggleRealImg.classList.remove('active');
+            simOcrContainer.classList.remove('hidden');
+            realImgContainer.classList.add('hidden');
+        });
+    }
     // OCR progress bar elements
     const ocrProgressBox = document.getElementById('ocr-progress-box');
     const ocrProgressFill = document.getElementById('ocr-progress-fill');
@@ -362,6 +398,392 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentScanMode = 'word'; // 'word' or 'photo'
     let selectedDocumentKey = null;
     let isProcessing = false;
+    let selectedFile = null;
+    let ocrExtractedRecords = [];
+    let fileQueue = [];
+
+    function updateQueueUI() {
+        const queueContainer = document.getElementById('batch-queue-container');
+        const queueList = document.getElementById('queue-list');
+        const queueCount = document.getElementById('queue-count');
+        if (!queueContainer || !queueList) return;
+
+        if (fileQueue.length > 0) {
+            queueContainer.classList.remove('hidden');
+            queueCount.textContent = `${fileQueue.length} tệp`;
+            queueList.innerHTML = '';
+            
+            fileQueue.forEach((fileObj, idx) => {
+                const item = document.createElement('div');
+                item.style.cssText = 'display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.03); border: 1px solid var(--surface-border); border-radius: 4px; padding: 6px 10px; font-size: 0.76rem;';
+                
+                let statusBadge = `<span class="status-badge" style="font-size: 0.65rem; padding: 2px 6px;">Chờ quét</span>`;
+                if (fileObj.status === 'processing') {
+                    statusBadge = `<span class="status-badge scanning" style="font-size: 0.65rem; padding: 2px 6px;">Đang quét...</span>`;
+                } else if (fileObj.status === 'done') {
+                    statusBadge = `<span class="status-badge completed" style="font-size: 0.65rem; padding: 2px 6px; background: rgba(16,185,129,0.15); color: var(--success);">Hoàn tất (${fileObj.added} mẫu)</span>`;
+                } else if (fileObj.status === 'failed') {
+                    statusBadge = `<span class="status-badge" style="font-size: 0.65rem; padding: 2px 6px; background: rgba(239,68,68,0.15); color: #f87171;">Thất bại</span>`;
+                }
+
+                const deleteBtn = !isProcessing 
+                    ? `<button type="button" class="btn-remove-file remove-queue-item" data-index="${idx}" title="Xóa" style="width: 18px; height: 18px; background: rgba(255,255,255,0.05); margin-left: 6px; border: none; cursor: pointer; color: var(--text-muted); display: inline-flex; align-items: center; justify-content: center; border-radius: 2px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:10px; height:10px;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>`
+                    : '';
+
+                item.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 8px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; max-width: 60%;">
+                        <span style="color: var(--text-muted); font-weight: 700;">#${idx+1}</span>
+                        <span style="color: var(--text-primary); overflow: hidden; text-overflow: ellipsis;" title="${fileObj.file.name}">${fileObj.file.name}</span>
+                    </div>
+                    <div style="display: flex; align-items: center;">
+                        ${statusBadge}
+                        ${deleteBtn}
+                    </div>
+                `;
+                queueList.appendChild(item);
+            });
+
+            // Register remove handlers
+            const removeBtns = queueList.querySelectorAll('.remove-queue-item');
+            removeBtns.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const index = parseInt(btn.getAttribute('data-index'));
+                    fileQueue.splice(index, 1);
+                    updateQueueUI();
+                    if (fileQueue.length === 0) {
+                        resetToInitialState();
+                    }
+                });
+            });
+        } else {
+            queueContainer.classList.add('hidden');
+        }
+    }
+
+    function cleanVal(str) {
+        return (str || '').toString().replace(/\s+/g, '').replace(/[gG]$/, '').trim();
+    }
+
+    function recordsMatch(rec1, rec2) {
+        if (!rec1 || !rec2) return false;
+        const w1 = cleanVal(rec1.weight);
+        const w2 = cleanVal(rec2.weight);
+        const dt1 = cleanVal(rec1.datetime);
+        const dt2 = cleanVal(rec2.datetime);
+
+        // If both have weight, they must match
+        if (w1 && w2 && w1 !== '-' && w2 !== '-' && w1 !== w2) return false;
+        // If both have datetime, they must match
+        if (dt1 && dt2 && dt1 !== '-' && dt2 !== '-' && dt1 !== dt2) return false;
+
+        const hasSharedWeight = w1 && w2 && w1 !== '-' && w2 !== '-';
+        const hasSharedDatetime = dt1 && dt2 && dt1 !== '-' && dt2 !== '-';
+        
+        return hasSharedWeight || hasSharedDatetime;
+    }
+
+    function findOverlap(A, B) {
+        let bestOffset = null;
+        let maxMatches = 0;
+        const minOverlap = 1;
+        
+        for (let offset = -(B.length - 1); offset < A.length; offset++) {
+            let matches = 0;
+            let mismatches = 0;
+            let overlapCount = 0;
+            
+            for (let i = 0; i < B.length; i++) {
+                const aIdx = offset + i;
+                if (aIdx >= 0 && aIdx < A.length) {
+                    overlapCount++;
+                    if (recordsMatch(A[aIdx], B[i])) {
+                        matches++;
+                    } else {
+                        const wA = cleanVal(A[aIdx].weight);
+                        const wB = cleanVal(B[i].weight);
+                        const dtA = cleanVal(A[aIdx].datetime);
+                        const dtB = cleanVal(B[i].datetime);
+                        
+                        const weightMismatch = wA && wB && wA !== '-' && wB !== '-' && wA !== wB;
+                        const dateMismatch = dtA && dtB && dtA !== '-' && dtB !== '-' && dtA !== dtB;
+                        
+                        if (weightMismatch || dateMismatch) {
+                            mismatches++;
+                        }
+                    }
+                }
+            }
+            
+            if (overlapCount >= minOverlap && mismatches === 0 && matches > maxMatches) {
+                maxMatches = matches;
+                bestOffset = offset;
+            }
+        }
+        return { offset: bestOffset, matches: maxMatches };
+    }
+
+    function mergeAligned(A, B, offset) {
+        const merged = [];
+        const start = Math.min(0, offset);
+        const end = Math.max(A.length, offset + B.length);
+        
+        for (let idx = start; idx < end; idx++) {
+            const aIdx = idx;
+            const bIdx = idx - offset;
+            
+            const recA = (aIdx >= 0 && aIdx < A.length) ? A[aIdx] : null;
+            const recB = (bIdx >= 0 && bIdx < B.length) ? B[bIdx] : null;
+            
+            if (recA && recB) {
+                merged.push({
+                    weight: (recA.weight && recA.weight !== '-') ? recA.weight : (recB.weight || '-'),
+                    datetime: (recA.datetime && recA.datetime !== '-') ? recA.datetime : (recB.datetime || '-'),
+                    balance_type: (recA.balance_type && recA.balance_type !== '-') ? recA.balance_type : (recB.balance_type || '-'),
+                    snr: (recA.snr && recA.snr !== '-') ? recA.snr : (recB.snr || '-')
+                });
+            } else if (recA) {
+                merged.push({ ...recA });
+            } else if (recB) {
+                merged.push({ ...recB });
+            }
+        }
+        return merged;
+    }
+
+    function getEarliestTime(list) {
+        for (let i = 0; i < list.length; i++) {
+            const dtStr = list[i].datetime;
+            if (dtStr && dtStr !== '-') {
+                const parts = dtStr.split(/[\s.:]+/);
+                if (parts.length >= 5) {
+                    const day = parseInt(parts[0]);
+                    const month = parseInt(parts[1]) - 1;
+                    const year = parseInt(parts[2]);
+                    const hour = parseInt(parts[3]);
+                    const min = parseInt(parts[4]);
+                    return new Date(year, month, day, hour, min).getTime();
+                }
+            }
+        }
+        return null;
+    }
+
+    function stitchOcrSessions(A, B) {
+        if (!A || A.length === 0) {
+            return B.map((rec, idx) => ({
+                id: idx + 1,
+                weight: rec.weight || '-',
+                datetime: rec.datetime || '-',
+                balance_type: rec.balance_type || '-',
+                snr: rec.snr || '-'
+            }));
+        }
+        if (!B || B.length === 0) {
+            return A;
+        }
+
+        const alignment = findOverlap(A, B);
+        
+        if (alignment.offset !== null && alignment.matches > 0) {
+            addLog(`Phát hiện vùng gối đầu (Khớp ${alignment.matches} bản ghi trùng). Đang ghép nối...`, 'success');
+            const merged = mergeAligned(A, B, alignment.offset);
+            merged.forEach((r, idx) => {
+                r.id = idx + 1;
+            });
+            return merged;
+        }
+
+        const timeA = getEarliestTime(A);
+        const timeB = getEarliestTime(B);
+
+        let merged = [];
+        if (timeA !== null && timeB !== null) {
+            if (timeB < timeA) {
+                addLog(`Không tìm thấy vùng trùng lặp. Tự động sắp xếp: Dữ liệu mới in trước dữ liệu cũ.`, 'system');
+                merged = [...B, ...A];
+            } else {
+                addLog(`Không tìm thấy vùng trùng lặp. Tự động sắp xếp: Dữ liệu mới in sau dữ liệu cũ.`, 'system');
+                merged = [...A, ...B];
+            }
+        } else {
+            addLog(`Không thể xác định thời gian in. Tự động nối tiếp dữ liệu mới vào cuối bảng.`, 'system');
+            merged = [...A, ...B];
+        }
+
+        merged.forEach((r, idx) => {
+            r.id = idx + 1;
+        });
+        return merged;
+    }
+
+    function handleMultipleFiles(files) {
+        if (isProcessing) return;
+        
+        const firstFile = files[0];
+        const nameLower = firstFile.name.toLowerCase();
+        
+        if (nameLower.endsWith('.jpg') || nameLower.endsWith('.jpeg') || nameLower.endsWith('.png')) {
+            fileQueue = [];
+            for (let i = 0; i < files.length; i++) {
+                fileQueue.push({
+                    file: files[i],
+                    status: 'pending',
+                    added: 0
+                });
+            }
+            
+            btnTabPhoto.click();
+            selectedFile = fileQueue[0].file;
+            selectedDocumentKey = 'photo-lab';
+            
+            const realImgEl = document.getElementById('real-image-preview');
+            if (realImgEl) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    realImgEl.src = e.target.result;
+                }
+                reader.readAsDataURL(selectedFile);
+            }
+            
+            if (btnToggleRealImg && btnToggleSimOcr && realImgContainer && simOcrContainer) {
+                btnToggleRealImg.classList.add('active');
+                btnToggleSimOcr.classList.remove('active');
+                realImgContainer.classList.remove('hidden');
+                simOcrContainer.classList.add('hidden');
+            }
+            
+            dropzonePrompt.classList.add('hidden');
+            fileLoadedView.classList.add('hidden');
+            filePhotoLoadedView.classList.remove('hidden');
+            setScanButtonState(true);
+            
+            updateQueueUI();
+            addLog(`Đã tải ${fileQueue.length} ảnh vào hàng đợi quét.`, 'system');
+        } else {
+            selectedFile = firstFile;
+            simulateCustomFileUpload(firstFile.name);
+        }
+    }
+
+    async function runBatchOCR() {
+        isProcessing = true;
+        setScanButtonState(false);
+        btnTabWord.setAttribute('disabled', 'true');
+        btnTabPhoto.setAttribute('disabled', 'true');
+        fileInput.setAttribute('disabled', 'true');
+        if (btnResetPhoto) btnResetPhoto.setAttribute('disabled', 'true');
+        if (btnPhotoClear) btnPhotoClear.setAttribute('disabled', 'true');
+        if (btnSyncCoa) btnSyncCoa.setAttribute('disabled', 'true');
+        
+        addLog(`🚀 Bắt đầu tiến trình quét liên tục ${fileQueue.length} ảnh...`, 'process');
+        
+        for (let idx = 0; idx < fileQueue.length; idx++) {
+            const queueItem = fileQueue[idx];
+            queueItem.status = 'processing';
+            updateQueueUI();
+            
+            selectedFile = queueItem.file;
+            const realImgEl = document.getElementById('real-image-preview');
+            if (realImgEl) {
+                const reader = new FileReader();
+                await new Promise((resolve) => {
+                    reader.onload = function(e) {
+                        realImgEl.src = e.target.result;
+                        resolve();
+                    }
+                    reader.readAsDataURL(selectedFile);
+                });
+            }
+            
+            addLog(`[Ảnh ${idx+1}/${fileQueue.length}]: Đang phân tích ${queueItem.file.name}...`, 'process');
+            
+            showLaserLines();
+            if (ocrProgressBox) {
+                ocrProgressBox.classList.remove('hidden');
+                ocrProgressFill.style.width = '30%';
+                ocrProgressPercent.textContent = '30%';
+                ocrProgressLabel.textContent = `Đang quét tệp ${idx+1}: ${queueItem.file.name}...`;
+            }
+            
+            try {
+                const formData = new FormData();
+                formData.append('image', queueItem.file);
+                
+                const response = await fetch('/user/scan/receipt-api/', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    const errData = await response.json();
+                    throw new Error(errData.error || `HTTP ${response.status}`);
+                }
+                
+                const result = await response.json();
+                if (!result.success) {
+                    throw new Error(result.error || 'Quét ảnh thất bại.');
+                }
+                
+                const incomingRecords = result.records || [];
+                const oldLen = ocrExtractedRecords.length;
+                ocrExtractedRecords = stitchOcrSessions(ocrExtractedRecords, incomingRecords);
+                const addedCount = ocrExtractedRecords.length - oldLen;
+                
+                queueItem.status = 'done';
+                queueItem.added = incomingRecords.length;
+                
+                addLog(`[Ảnh ${idx+1}/${fileQueue.length}] Thành công! Trích xuất ${incomingRecords.length} mẫu.`, 'success');
+                
+                renderOcrTable(ocrExtractedRecords);
+                updateUniformityStatsAndPills();
+                
+                for (let i = 0; i < 20; i++) {
+                    const pillNum = i + 1;
+                    const record = ocrExtractedRecords[i] || {};
+                    let val = record.weight || '';
+                    if (val === '-') val = '';
+                    const inputEl = document.getElementById(`w${pillNum}`);
+                    const indicatorEl = document.getElementById(`ind-w${pillNum}`);
+                    const ocrBox = document.getElementById(`box-w${pillNum}`);
+                    
+                    if (inputEl) {
+                        inputEl.value = val;
+                        inputEl.classList.add('filled-highlight');
+                        if (val) {
+                            if (indicatorEl) indicatorEl.className = 'extraction-indicator success';
+                            if (ocrBox) ocrBox.className = 'ocr-box success';
+                        }
+                    }
+                }
+                
+            } catch (err) {
+                queueItem.status = 'failed';
+                addLog(`[Ảnh ${idx+1}/${fileQueue.length}] Lỗi: ${err.message}`, 'error');
+            } finally {
+                hideLaserLines();
+                updateQueueUI();
+            }
+            
+            if (idx < fileQueue.length - 1) {
+                addLog(`Đang nghỉ 1.5 giây để tránh quá tải API...`, 'system');
+                await new Promise(resolve => setTimeout(resolve, 1500));
+            }
+        }
+        
+        isProcessing = false;
+        setScanButtonState(true);
+        btnTabWord.removeAttribute('disabled');
+        btnTabPhoto.removeAttribute('disabled');
+        fileInput.removeAttribute('disabled');
+        if (btnResetPhoto) btnResetPhoto.removeAttribute('disabled');
+        if (btnPhotoClear) btnPhotoClear.removeAttribute('disabled');
+        if (btnSyncCoa) btnSyncCoa.removeAttribute('disabled');
+        
+        if (ocrProgressBox) ocrProgressBox.classList.add('hidden');
+        document.getElementById('uniformity-card-glow').classList.add('active-glow');
+        addLog(`🎉 Hoàn tất tiến trình quét liên tục! Đã ghép nối tổng cộng: ${ocrExtractedRecords.length} mẫu.`, 'success');
+    }
 
     // Helper to toggle scan button state and premium glow animations
     function setScanButtonState(enabled) {
@@ -535,6 +957,16 @@ document.addEventListener('DOMContentLoaded', () => {
             filePhotoLoadedView.classList.remove('hidden');
             setScanButtonState(true);
 
+            // Default to simulated view for mockup samples
+            if (btnToggleRealImg && btnToggleSimOcr && realImgContainer && simOcrContainer) {
+                btnToggleSimOcr.classList.add('active');
+                btnToggleRealImg.classList.remove('active');
+                simOcrContainer.classList.remove('hidden');
+                realImgContainer.classList.add('hidden');
+            }
+            const realImgEl = document.getElementById('real-image-preview');
+            if (realImgEl) realImgEl.src = ''; // Clear image source for mockup mode
+
             addLog(`Loaded mock lab receipt: <strong>Phieu_Can_DDKL-03.png</strong>`, 'system');
             addLog(`Image processed. Signature and weights located. Ready to scan.`, 'system');
             resetPhotoFormInputs();
@@ -578,8 +1010,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     fileInput.addEventListener('change', (e) => {
         if (e.target.files.length > 0) {
-            const file = e.target.files[0];
-            simulateCustomFileUpload(file.name);
+            handleMultipleFiles(e.target.files);
         }
     });
 
@@ -600,7 +1031,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const files = e.dataTransfer.files;
         if (files.length > 0) {
-            simulateCustomFileUpload(files[0].name);
+            handleMultipleFiles(files);
         }
     });
 
@@ -616,6 +1047,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isProcessing) return;
         
         selectedDocumentKey = null;
+        selectedFile = null;
+        ocrExtractedRecords = [];
+        fileQueue = [];
+        updateQueueUI();
+        renderOcrTable(ocrExtractedRecords);
         filePhotoLoadedView.classList.add('hidden');
         dropzonePrompt.classList.remove('hidden');
         setScanButtonState(false);
@@ -630,6 +1066,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function resetToInitialState() {
         selectedDocumentKey = null;
         fileInput.value = '';
+        fileQueue = [];
+        updateQueueUI();
         dropzonePrompt.classList.remove('hidden');
         fileLoadedView.classList.add('hidden');
         setScanButtonState(false);
@@ -691,6 +1129,8 @@ document.addEventListener('DOMContentLoaded', () => {
             valResult.textContent = 'Chờ dữ liệu';
             valResult.style.color = 'var(--text-muted)';
         }
+        const uniformityGlow = document.getElementById('uniformity-card-glow');
+        if (uniformityGlow) uniformityGlow.classList.remove('active-glow');
         if (btnPhotoClear) btnPhotoClear.setAttribute('disabled', 'true');
         if (btnSyncCoa) btnSyncCoa.setAttribute('disabled', 'true');
     }
@@ -704,6 +1144,24 @@ document.addEventListener('DOMContentLoaded', () => {
         if (nameLower.endsWith('.jpg') || nameLower.endsWith('.jpeg') || nameLower.endsWith('.png')) {
             btnTabPhoto.click();
             addLog(`Analyzing uploaded photo: <strong>${fileName}</strong>`, 'system');
+            
+            // Load real image preview
+            const realImgEl = document.getElementById('real-image-preview');
+            if (realImgEl && selectedFile) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    realImgEl.src = e.target.result;
+                }
+                reader.readAsDataURL(selectedFile);
+            }
+
+            // Default to real image toggle view for manual uploads
+            if (btnToggleRealImg && btnToggleSimOcr && realImgContainer && simOcrContainer) {
+                btnToggleRealImg.classList.add('active');
+                btnToggleSimOcr.classList.remove('active');
+                realImgContainer.classList.remove('hidden');
+                simOcrContainer.classList.add('hidden');
+            }
             
             setTimeout(() => {
                 selectedDocumentKey = 'photo-lab';
@@ -814,7 +1272,6 @@ document.addEventListener('DOMContentLoaded', () => {
             formStatusBadge.className = 'status-badge scanning';
             consoleStatusDot.className = 'console-status-dot active';
             
-            // Show and reset OCR progress box
             if (ocrProgressBox) {
                 ocrProgressBox.classList.remove('hidden');
                 ocrProgressFill.style.width = '0%';
@@ -870,7 +1327,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (ocrProgressLabel) ocrProgressLabel.textContent = 'Đang ánh xạ các trường biểu mẫu...';
                 }
                 
-                // Fill fields sequentially between 50% and 90% (span of 40%)
                 if (percent >= 50 && percent < 90) {
                     const fieldsToFill = Math.min(10, Math.floor((percent - 50) / 4));
                     if (ocrProgressLabel) ocrProgressLabel.textContent = `Đang điền thông tin thuốc (${fieldsToFill}/10)...`;
@@ -903,17 +1359,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (percent < 100) {
                     requestAnimationFrame(updateWordScan);
                 } else {
-                    if (ocrProgressLabel) ocrProgressLabel.textContent = 'Hoàn tất trích xuất tài liệu!';
+                    if (ocrProgressLabel) ocrProgressLabel.textContent = 'Hoàn tất quét biểu mẫu!';
                     
-                    // Guarantee all fields filled
-                    for (let i = 0; i < 10; i++) {
+                    for (let i = 0; i < dataKeys.length; i++) {
                         const key = dataKeys[i];
-                        const val = doc.formData[key];
                         const inputEl = document.getElementById(key);
-                        const indicatorEl = document.getElementById(`ind-${key}`);
                         if (inputEl && inputEl.value === '') {
-                            inputEl.value = val;
+                            inputEl.value = doc.formData[key];
                             inputEl.classList.add('filled-highlight');
+                            const indicatorEl = document.getElementById(`ind-${key}`);
                             if (indicatorEl) indicatorEl.className = 'extraction-indicator success';
                         }
                     }
@@ -921,156 +1375,34 @@ document.addEventListener('DOMContentLoaded', () => {
                     setTimeout(() => {
                         if (ocrProgressBox) ocrProgressBox.classList.add('hidden');
                         finishScanningProcess();
-                        btnTabWord.removeAttribute('disabled');
-                        btnTabPhoto.removeAttribute('disabled');
-                        fileInput.removeAttribute('disabled');
                     }, 500);
                 }
             }
             
             requestAnimationFrame(updateWordScan);
-        } 
-        else {
+        } else {
             // PHOTO OCR BALANCE RECEIPT MODE
-            btnResetPhoto.setAttribute('disabled', 'true');
-            resetPhotoFormInputs();
-            
-            photoLaserLine.classList.remove('hidden');
-            photoStatusBadge.textContent = 'Đang quét...';
-            photoStatusBadge.className = 'status-badge scanning';
-            consoleStatusDot.className = 'console-status-dot active';
-            
-            if (ocrProgressBox) {
-                ocrProgressBox.classList.remove('hidden');
-                ocrProgressFill.style.width = '0%';
-                ocrProgressPercent.textContent = '0%';
-                ocrProgressLabel.textContent = 'Khởi động máy quét AI OCR...';
-            }
-            
-            const loggedMilestones = new Set();
-            const duration = 2500; // 2.5 seconds
-            const startTime = performance.now();
-            
-            function updatePhotoScan(currentTime) {
-                const elapsedTime = currentTime - startTime;
-                const progress = Math.min(elapsedTime / duration, 1);
-                const percent = Math.floor(progress * 100);
-                
-                if (ocrProgressFill) ocrProgressFill.style.width = `${percent}%`;
-                if (ocrProgressPercent) ocrProgressPercent.textContent = `${percent}%`;
-                
-                if (percent >= 0) {
-                    if (!loggedMilestones.has('p0')) {
-                        loggedMilestones.add('p0');
-                        addLog(`⚡ Bắt đầu Quét AI OCR Phiếu cân Phòng Lab...`, 'process');
-                    }
-                    if (ocrProgressLabel) ocrProgressLabel.textContent = 'Khởi động máy quét AI OCR...';
-                }
-                
-                if (percent >= 8) {
-                    if (!loggedMilestones.has('p8')) {
-                        loggedMilestones.add('p8');
-                        addLog(`Đang tối ưu hóa hình ảnh & khử nhiễu nhiễu ảnh nhiệt...`, 'process');
-                    }
-                    if (ocrProgressLabel) ocrProgressLabel.textContent = 'Đang tối ưu hóa hình ảnh & khử nhiễu...';
-                }
-                
-                if (percent >= 20) {
-                    if (!loggedMilestones.has('p20')) {
-                        loggedMilestones.add('p20');
-                        addLog(`Nhận diện bố cục: Phát hiện 2 cột in nhiệt kết quả cân.`, 'process');
-                    }
-                    if (ocrProgressLabel) ocrProgressLabel.textContent = 'Đang phân tích cấu trúc cột phiếu lab...';
-                }
-                
-                if (percent >= 35) {
-                    if (!loggedMilestones.has('p35')) {
-                        loggedMilestones.add('p35');
-                        addLog(`Phát hiện chữ viết tay: Mã hiệu 'DDKL-03', Số lô '1226003'.`, 'success');
-                        addLog(`Đọc thông tin phần cứng: Cân phân tích METTLER TOLEDO MS204S.`, 'process');
-                    }
-                    if (ocrProgressLabel) ocrProgressLabel.textContent = 'Đang nhận diện chữ viết tay & cấu hình...';
-                }
-                
-                if (percent >= 50) {
-                    if (!loggedMilestones.has('p50')) {
-                        loggedMilestones.add('p50');
-                        addLog(`Đang trích xuất dữ liệu khối lượng (20 chỉ tiêu)...`, 'process');
-                    }
-                }
-                
-                // Fill pills sequentially between 50% and 85% (span of 35%)
-                if (percent >= 50 && percent < 85) {
-                    const pillsToFill = Math.min(20, Math.floor((percent - 50) / 1.75));
-                    if (ocrProgressLabel) ocrProgressLabel.textContent = `Đang trích xuất dữ liệu khối lượng (${pillsToFill}/20)...`;
-                    
-                    for (let i = 0; i < pillsToFill; i++) {
-                        const pillNum = i + 1;
-                        const val = mockPillWeights[i];
-                        const inputEl = document.getElementById(`w${pillNum}`);
-                        const indicatorEl = document.getElementById(`ind-w${pillNum}`);
-                        const ocrBox = document.getElementById(`box-w${pillNum}`);
-                        
-                        if (inputEl && inputEl.value === '') {
-                            inputEl.value = val;
-                            inputEl.classList.add('filled-highlight');
-                            if (indicatorEl) indicatorEl.className = 'extraction-indicator success';
-                            if (ocrBox) ocrBox.className = 'ocr-box success';
-                            
-                            if (pillNum % 5 === 1) {
-                                addLog(`Trích xuất viên V${pillNum} đến V${Math.min(pillNum+4, 20)}: ${val}g`, 'process');
-                            }
-                        }
-                    }
-                }
-                
-                if (percent >= 85) {
-                    if (!loggedMilestones.has('p85')) {
-                        loggedMilestones.add('p85');
-                        addLog(`Trích xuất thành công 20/20 khối lượng. Đang tính toán dữ liệu...`, 'success');
-                    }
-                    if (ocrProgressLabel) ocrProgressLabel.textContent = 'Đang đối chiếu Dược Điển Việt Nam V...';
-                }
-                
-                if (percent >= 92) {
-                    if (!loggedMilestones.has('p92')) {
-                        loggedMilestones.add('p92');
-                        addLog(`Kiểm định Dược Điển: Trung bình = 0.256g | RSD = 0.82% (ĐẠT).`, 'success');
-                    }
-                    if (ocrProgressLabel) ocrProgressLabel.textContent = 'Đang lưu trữ kết quả kiểm nghiệm...';
-                }
-                
-                if (percent < 100) {
-                    requestAnimationFrame(updatePhotoScan);
+            if (fileQueue.length > 0) {
+                runBatchOCR();
+            } else if (!selectedFile) {
+                if (selectedDocumentKey === 'photo-lab') {
+                    if (btnResetPhoto) btnResetPhoto.setAttribute('disabled', 'true');
+                    resetPhotoFormInputs();
+                    runSimulatedDemoOCR();
                 } else {
-                    if (ocrProgressLabel) ocrProgressLabel.textContent = 'Hoàn tất quét phiếu cân lab!';
-                    
-                    // Ensure all 20 pills are filled
-                    for (let i = 0; i < 20; i++) {
-                        const pillNum = i + 1;
-                        const val = mockPillWeights[i];
-                        const inputEl = document.getElementById(`w${pillNum}`);
-                        const indicatorEl = document.getElementById(`ind-w${pillNum}`);
-                        const ocrBox = document.getElementById(`box-w${pillNum}`);
-                        if (inputEl && inputEl.value === '') {
-                            inputEl.value = val;
-                            inputEl.classList.add('filled-highlight');
-                            if (indicatorEl) indicatorEl.className = 'extraction-indicator success';
-                            if (ocrBox) ocrBox.className = 'ocr-box success';
-                        }
-                    }
-                    
-                    setTimeout(() => {
-                        if (ocrProgressBox) ocrProgressBox.classList.add('hidden');
-                        finishPhotoScanningProcess();
-                        btnTabWord.removeAttribute('disabled');
-                        btnTabPhoto.removeAttribute('disabled');
-                        fileInput.removeAttribute('disabled');
-                    }, 500);
+                    addLog('Chưa có ảnh nào được tải lên. Vui lòng chọn ảnh phiếu cân.', 'error');
+                    isProcessing = false;
+                    setScanButtonState(true);
+                    btnTabWord.removeAttribute('disabled');
+                    btnTabPhoto.removeAttribute('disabled');
+                    fileInput.removeAttribute('disabled');
                 }
+                return;
+            } else {
+                if (btnResetPhoto) btnResetPhoto.setAttribute('disabled', 'true');
+                resetPhotoFormInputs();
+                runGeminiOCR(selectedFile);
             }
-            
-            requestAnimationFrame(updatePhotoScan);
         }
     });
 
@@ -1096,7 +1428,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function finishPhotoScanningProcess() {
         // Stop Laser animation
-        photoLaserLine.classList.add('hidden');
+        hideLaserLines();
         
         // Update form status badge
         photoStatusBadge.textContent = 'Hoàn tất';
@@ -1159,7 +1491,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnPhotoClear) {
         btnPhotoClear.addEventListener('click', () => {
             if (isProcessing) return;
+            ocrExtractedRecords = [];
+            renderOcrTable(ocrExtractedRecords);
             resetPhotoFormInputs();
+            updateUniformityStatsAndPills();
             addLog('Weight Uniformity Form cleared by user.', 'system');
         });
     }
@@ -1206,4 +1541,642 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    function mergeOcrRecords(existing, incoming) {
+        function clean(str) {
+            return (str || '').toString().replace(/\s+/g, '').replace(/[gG]$/, '').trim();
+        }
+
+        const merged = [...existing];
+
+        incoming.forEach(newRec => {
+            let isDuplicate = false;
+            
+            for (let i = 0; i < merged.length; i++) {
+                const oldRec = merged[i];
+                
+                const oldW = clean(oldRec.weight);
+                const newW = clean(newRec.weight);
+                const oldDt = clean(oldRec.datetime);
+                const newDt = clean(newRec.datetime);
+
+                // Case 1: Exact match of weight and datetime
+                if (oldW && newW && oldW !== '-' && newW !== '-' && oldDt && newDt && oldDt !== '-' && newDt !== '-') {
+                    if (oldW === newW && oldDt === newDt) {
+                        isDuplicate = true;
+                        if ((!oldRec.snr || oldRec.snr === '-') && newRec.snr) oldRec.snr = newRec.snr;
+                        if ((!oldRec.balance_type || oldRec.balance_type === '-') && newRec.balance_type) oldRec.balance_type = newRec.balance_type;
+                        break;
+                    }
+                }
+
+                // Case 2: Missing weight in existing but date matches
+                if ((!oldW || oldW === '-') && newW && newW !== '-' && oldDt && newDt && oldDt !== '-' && oldDt === newDt) {
+                    oldRec.weight = newRec.weight;
+                    if (newRec.snr) oldRec.snr = newRec.snr;
+                    if (newRec.balance_type) oldRec.balance_type = newRec.balance_type;
+                    isDuplicate = true;
+                    break;
+                }
+
+                // Case 3: Missing date in new record but weight matches
+                if (oldW && newW && oldW !== '-' && oldW === newW && oldDt && oldDt !== '-' && (!newDt || newDt === '-')) {
+                    isDuplicate = true;
+                    break;
+                }
+                
+                // Case 4: Missing date in existing but weight matches
+                if (oldW && newW && oldW !== '-' && oldW === newW && (!oldDt || oldDt === '-') && newDt && newDt !== '-') {
+                    oldRec.datetime = newRec.datetime;
+                    if (newRec.snr) oldRec.snr = newRec.snr;
+                    if (newRec.balance_type) oldRec.balance_type = newRec.balance_type;
+                    isDuplicate = true;
+                    break;
+                }
+            }
+
+            if (!isDuplicate) {
+                merged.push({
+                    id: merged.length + 1,
+                    weight: newRec.weight || '-',
+                    datetime: newRec.datetime || '-',
+                    balance_type: newRec.balance_type || '-',
+                    snr: newRec.snr || '-'
+                });
+            }
+        });
+
+        // Re-index
+        merged.forEach((r, idx) => {
+            r.id = idx + 1;
+        });
+
+        return merged;
+    }
+
+    async function runGeminiOCR(file) {
+        showLaserLines();
+        if (btnPhotoClear) btnPhotoClear.setAttribute('disabled', 'true');
+        if (btnSyncCoa) btnSyncCoa.setAttribute('disabled', 'true');
+        
+        try {
+            if (ocrProgressBox) {
+                ocrProgressBox.classList.remove('hidden');
+                ocrProgressFill.style.width = '0%';
+                ocrProgressPercent.textContent = '0%';
+                ocrProgressLabel.textContent = 'Đang gửi ảnh lên máy chủ...';
+            }
+            addLog('Đang gửi ảnh lên backend và bắt đầu xử lý bằng Gemini Vision API...', 'process');
+
+            const formData = new FormData();
+            formData.append('image', file);
+
+            const response = await fetch('/user/scan/receipt-api/', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) {
+                const errData = await response.json();
+                throw new Error(errData.error || `HTTP ${response.status}`);
+            }
+
+            if (ocrProgressFill) ocrProgressFill.style.width = '60%';
+            if (ocrProgressPercent) ocrProgressPercent.textContent = '60%';
+            if (ocrProgressLabel) ocrProgressLabel.textContent = 'Đang định dạng bảng kết quả...';
+            
+            const result = await response.json();
+
+            if (!result.success) {
+                throw new Error(result.error || 'Quét ảnh thất bại.');
+            }
+
+            const finalRecords = result.records || [];
+            const totalRecords = finalRecords.length;
+            addLog(`Xử lý hoàn tất. Tổng số bản ghi nhận diện được: ${totalRecords}`, 'success');
+
+            if (totalRecords === 0) {
+                addLog('Không tìm thấy dữ liệu phiếu cân trong ảnh này. Vui lòng thử ảnh khác.', 'error');
+                if (ocrProgressBox) ocrProgressBox.classList.add('hidden');
+                if (photoStatusBadge) {
+                    photoStatusBadge.textContent = 'Không tìm thấy dữ liệu';
+                    photoStatusBadge.className = 'status-badge';
+                }
+                resetUIStatePhoto();
+                return;
+            }
+
+            // Merge new records with existing records (supports overlapping scans)
+            ocrExtractedRecords = mergeOcrRecords(ocrExtractedRecords, finalRecords);
+
+            // Render real OCR records in the data table
+            renderOcrTable(ocrExtractedRecords);
+            updateUniformityStatsAndPills();
+
+            // Fill UI fields using merged records
+            for (let i = 0; i < 20; i++) {
+                const pillNum = i + 1;
+                const record = ocrExtractedRecords[i] || {};
+                let val = record.weight || '';
+                if (val === '-') val = '';
+                const inputEl = document.getElementById(`w${pillNum}`);
+                const indicatorEl = document.getElementById(`ind-w${pillNum}`);
+                const ocrBox = document.getElementById(`box-w${pillNum}`);
+                
+                if (inputEl) {
+                    inputEl.value = val;
+                    inputEl.classList.add('filled-highlight');
+                    if (val) {
+                        if (indicatorEl) indicatorEl.className = 'extraction-indicator success';
+                        if (ocrBox) ocrBox.className = 'ocr-box success';
+                    }
+                }
+            }
+
+            // Calculations
+            const parsedWeights = ocrExtractedRecords
+                .map(r => parseFloat(r.weight))
+                .filter(v => !isNaN(v) && v > 0);
+            
+            if (parsedWeights.length > 0) {
+                const mean = parsedWeights.reduce((a, b) => a + b, 0) / parsedWeights.length;
+                const variance = parsedWeights.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / parsedWeights.length;
+                const rsd = (Math.sqrt(variance) / mean) * 100;
+                
+                const valMean = document.getElementById('val-mean');
+                const valRsd = document.getElementById('val-rsd');
+                const valResult = document.getElementById('val-result');
+                
+                if (valMean) valMean.textContent = `${mean.toFixed(4)} g`;
+                if (valRsd) valRsd.textContent = `${rsd.toFixed(2)} %`;
+                if (valResult) {
+                    if (rsd <= 2.0) {
+                        valResult.textContent = 'Đạt yêu cầu';
+                        valResult.style.color = 'var(--success)';
+                        addLog(`Kiểm định Dược Điển: Trung bình = ${mean.toFixed(4)}g | RSD = ${rsd.toFixed(2)}% (ĐẠT).`, 'success');
+                    } else {
+                        valResult.textContent = 'Không đạt';
+                        valResult.style.color = 'var(--danger)';
+                        addLog(`Kiểm định Dược Điển: Trung bình = ${mean.toFixed(4)}g | RSD = ${rsd.toFixed(2)}% (KHÔNG ĐẠT).`, 'error');
+                    }
+                }
+            }
+
+            if (ocrProgressFill) ocrProgressFill.style.width = '100%';
+            if (ocrProgressPercent) ocrProgressPercent.textContent = '100%';
+            if (ocrProgressLabel) ocrProgressLabel.textContent = 'Hoàn tất quét phiếu cân lab!';
+
+            setTimeout(() => {
+                if (ocrProgressBox) ocrProgressBox.classList.add('hidden');
+                hideLaserLines();
+
+                if (photoStatusBadge) {
+                    photoStatusBadge.textContent = `Hoàn tất (${totalRecords} mẫu)`;
+                    photoStatusBadge.className = 'status-badge completed';
+                }
+                if (consoleStatusDot) consoleStatusDot.className = 'console-status-dot idle';
+
+                isProcessing = false;
+                setScanButtonState(true);
+                if (btnResetPhoto) btnResetPhoto.removeAttribute('disabled');
+                if (btnPhotoClear) btnPhotoClear.removeAttribute('disabled');
+                if (btnSyncCoa) btnSyncCoa.removeAttribute('disabled');
+                fileInput.removeAttribute('disabled');
+
+                addLog(`🎉 <strong>OCR hoàn tất!</strong> Đã trích xuất ${totalRecords} kết quả cân từ ảnh thực bằng Gemini API.`, 'success');
+
+                const uniformityGlow = document.getElementById('uniformity-card-glow');
+                if (uniformityGlow) uniformityGlow.classList.add('active-glow');
+            }, 500);
+
+        } catch (err) {
+            addLog(`Lỗi OCR: ${err.message}`, 'error');
+            console.error('OCR Error:', err);
+            if (ocrProgressBox) ocrProgressBox.classList.add('hidden');
+            resetUIStatePhoto();
+        }
+    }
+
+    function resetUIStatePhoto() {
+        hideLaserLines();
+        if (photoStatusBadge) {
+            photoStatusBadge.textContent = 'Lỗi quét';
+            photoStatusBadge.className = 'status-badge';
+        }
+        if (consoleStatusDot) consoleStatusDot.className = 'console-status-dot idle';
+        isProcessing = false;
+        setScanButtonState(true);
+        if (btnResetPhoto) btnResetPhoto.removeAttribute('disabled');
+        if (btnPhotoClear) btnPhotoClear.removeAttribute('disabled');
+        fileInput.removeAttribute('disabled');
+    }
+
+    // --- DATA TABLE RENDERING FOR OCR RESULTS ---
+    let currentTablePage = 1;
+    const recordsPerPage = 10;
+
+    function updateUniformityStatsAndPills() {
+        const grid = document.getElementById('pill-progress-grid');
+        const counter = document.getElementById('session-stitch-counter');
+        if (!grid) return;
+
+        grid.innerHTML = '';
+        let completedCount = 0;
+
+        for (let i = 0; i < 20; i++) {
+            const rec = ocrExtractedRecords[i] || {};
+            const hasW = rec.weight && rec.weight !== '-' && rec.weight !== '';
+            const hasDt = rec.datetime && rec.datetime !== '-' && rec.datetime !== '';
+            
+            let colorClass = 'background: rgba(255,255,255,0.03); border: 1px solid var(--surface-border); color: var(--text-muted);';
+            let title = `Viên ${i+1}: Trống`;
+
+            if (hasW && hasDt) {
+                colorClass = 'background: rgba(16, 185, 129, 0.15); border: 1px solid var(--success); color: var(--success); box-shadow: 0 0 6px rgba(16, 185, 129, 0.2);';
+                title = `Viên ${i+1}: Hoàn thành (${rec.weight} g)`;
+                completedCount++;
+            } else if (hasW || hasDt) {
+                colorClass = 'background: rgba(245, 158, 11, 0.15); border: 1px solid #f59e0b; color: #f59e0b; box-shadow: 0 0 6px rgba(245, 158, 11, 0.2);';
+                title = `Viên ${i+1}: Khuyết ${hasW ? 'ngày giờ' : 'cân nặng'}`;
+            }
+
+            const pill = document.createElement('div');
+            pill.style.cssText = `height: 24px; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.72rem; font-weight: 700; cursor: help; transition: var(--transition-fast); ${colorClass}`;
+            pill.title = title;
+            pill.textContent = i + 1;
+            grid.appendChild(pill);
+        }
+
+        if (counter) {
+            counter.textContent = `${completedCount} / 20 viên hoàn tất`;
+        }
+
+        // Recalculate mean, RSD etc. for calculations card
+        const parsedWeights = ocrExtractedRecords
+            .map(r => parseFloat(r.weight))
+            .filter(v => !isNaN(v) && v > 0);
+
+        const valMean = document.getElementById('val-mean');
+        const valRsd = document.getElementById('val-rsd');
+        const valMax = document.getElementById('val-max');
+        const valMin = document.getElementById('val-min');
+
+        if (parsedWeights.length > 0) {
+            const mean = parsedWeights.reduce((a, b) => a + b, 0) / parsedWeights.length;
+            const variance = parsedWeights.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / parsedWeights.length;
+            const rsd = (Math.sqrt(variance) / mean) * 100;
+            const maxVal = Math.max(...parsedWeights);
+            const minVal = Math.min(...parsedWeights);
+
+            if (valMean) valMean.textContent = mean.toFixed(4) + ' g';
+            if (valRsd) valRsd.textContent = rsd.toFixed(2) + ' %';
+            if (valMax) valMax.textContent = maxVal.toFixed(3) + ' g';
+            if (valMin) valMin.textContent = minVal.toFixed(3) + ' g';
+        } else {
+            if (valMean) valMean.textContent = '-';
+            if (valRsd) valRsd.textContent = '-';
+            if (valMax) valMax.textContent = '-';
+            if (valMin) valMin.textContent = '-';
+        }
+    }
+
+    function renderOcrTable(records) {
+        const tbody = document.getElementById('table-body');
+        const filterEl = document.getElementById('table-filter-select');
+        const searchEl = document.getElementById('table-search-input');
+        if (!tbody) return;
+
+        const filterVal = filterEl ? filterEl.value : 'all';
+        const searchVal = searchEl ? searchEl.value.trim().toLowerCase() : '';
+
+        // Calculate mean for validity check
+        const parsedWeights = records
+            .map(r => parseFloat(r.weight))
+            .filter(v => !isNaN(v) && v > 0);
+        const mean = parsedWeights.length > 0 ? parsedWeights.reduce((a, b) => a + b, 0) / parsedWeights.length : 0.256;
+
+        // Filter records
+        let filtered = records.filter(r => {
+            const w = parseFloat(r.weight);
+            const isRecordValid = isNaN(w) || (w >= mean * 0.95 && w <= mean * 1.05);
+
+            if (filterVal === 'valid' && !isRecordValid) return false;
+            if (filterVal === 'invalid' && isRecordValid) return false;
+
+            if (searchVal && 
+                !(r.weight || '').toLowerCase().includes(searchVal) && 
+                !(r.snr || '').toLowerCase().includes(searchVal) && 
+                !(r.datetime || '').toLowerCase().includes(searchVal) && 
+                !(r.balance_type || '').toLowerCase().includes(searchVal)) {
+                return false;
+            }
+            return true;
+        });
+
+        const totalPages = Math.ceil(filtered.length / recordsPerPage) || 1;
+        if (currentTablePage > totalPages) currentTablePage = totalPages;
+
+        const startIdx = (currentTablePage - 1) * recordsPerPage;
+        const pageData = filtered.slice(startIdx, startIdx + recordsPerPage);
+
+        tbody.innerHTML = '';
+        if (pageData.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px; color: var(--text-muted);">Không tìm thấy dữ liệu</td></tr>';
+        } else {
+            pageData.forEach(r => {
+                const w = parseFloat(r.weight);
+                const isRecordValid = isNaN(w) || (w >= mean * 0.95 && w <= mean * 1.05);
+                const statusBadge = isRecordValid 
+                    ? '<span class="status-badge completed">Hợp lệ</span>'
+                    : '<span class="status-badge" style="background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.3); padding: 2px 6px; border-radius: 4px; font-size: 0.75rem;">Lệch > 5%</span>';
+
+                const tr = document.createElement('tr');
+                tr.style.borderBottom = '1px solid var(--surface-border)';
+                tr.innerHTML = `
+                    <td style="padding: 10px 16px; color: var(--text-muted);">${r.id}</td>
+                    <td class="editable-cell" data-id="${r.id}" data-field="weight" contenteditable="true" style="padding: 10px 16px; font-weight: 600; color: var(--accent); border-bottom: 1px dashed rgba(14, 165, 233, 0.25); outline: none; cursor: edit;">${r.weight || '-'}</td>
+                    <td class="editable-cell" data-id="${r.id}" data-field="datetime" contenteditable="true" style="padding: 10px 16px; color: var(--text-secondary); border-bottom: 1px dashed rgba(255, 255, 255, 0.05); outline: none; cursor: edit;">${r.datetime || '-'}</td>
+                    <td class="editable-cell" data-id="${r.id}" data-field="balance_type" contenteditable="true" style="padding: 10px 16px; color: var(--text-secondary); border-bottom: 1px dashed rgba(255, 255, 255, 0.05); outline: none; cursor: edit;">${r.balance_type || '-'}</td>
+                    <td class="editable-cell" data-id="${r.id}" data-field="snr" contenteditable="true" style="padding: 10px 16px; color: var(--text-secondary); font-family: monospace; border-bottom: 1px dashed rgba(255, 255, 255, 0.05); outline: none; cursor: edit;">${r.snr || '-'}</td>
+                    <td style="padding: 10px 16px;">${statusBadge}</td>
+                `;
+                tbody.appendChild(tr);
+
+                // Add change listener to save edited value
+                const cells = tr.querySelectorAll('.editable-cell');
+                cells.forEach(cell => {
+                    cell.addEventListener('blur', (e) => {
+                        const id = parseInt(e.target.getAttribute('data-id'));
+                        const field = e.target.getAttribute('data-field');
+                        let newVal = e.target.textContent.trim();
+                        if (newVal === '-') newVal = '';
+                        
+                        // Find and update in global ocrExtractedRecords
+                        const recordIndex = ocrExtractedRecords.findIndex(rec => rec.id === id);
+                        if (recordIndex !== -1) {
+                            ocrExtractedRecords[recordIndex][field] = newVal;
+                            
+                            // Re-sync this value to the matching UI input w1-w20 if field is 'weight'
+                            if (field === 'weight' && id <= 20) {
+                                const inputEl = document.getElementById(`w${id}`);
+                                if (inputEl) {
+                                    inputEl.value = newVal;
+                                    inputEl.classList.add('filled-highlight');
+                                    // Update indicator class
+                                    const indicatorEl = document.getElementById(`ind-w${id}`);
+                                    const ocrBox = document.getElementById(`box-w${id}`);
+                                    if (newVal) {
+                                        if (indicatorEl) indicatorEl.className = 'extraction-indicator success';
+                                        if (ocrBox) ocrBox.className = 'ocr-box success';
+                                    } else {
+                                        if (indicatorEl) indicatorEl.className = 'extraction-indicator';
+                                        if (ocrBox) ocrBox.className = 'ocr-box';
+                                    }
+                                }
+                            }
+                            
+                            // Re-calculate statistics and redraw table to update validation status
+                            updateUniformityStatsAndPills();
+                        }
+                    });
+                    
+                    cell.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            e.target.blur();
+                        }
+                    });
+                });
+            });
+        }
+
+        // Update pagination info
+        const info = document.getElementById('pagination-info');
+        const indicator = document.getElementById('page-indicator');
+        const btnPrev = document.getElementById('btn-prev-page');
+        const btnNext = document.getElementById('btn-next-page');
+
+        if (info) info.textContent = `Hiển thị ${filtered.length} bản ghi`;
+        if (indicator) indicator.textContent = `${currentTablePage} / ${totalPages}`;
+        if (btnPrev) btnPrev.disabled = currentTablePage <= 1;
+        if (btnNext) btnNext.disabled = currentTablePage >= totalPages;
+    }
+
+    // Table search
+    const tableSearchInput = document.getElementById('table-search-input');
+    if (tableSearchInput) {
+        tableSearchInput.addEventListener('input', () => {
+            currentTablePage = 1;
+            renderOcrTable(ocrExtractedRecords);
+        });
+    }
+
+    // Table filter
+    const tableFilterSelect = document.getElementById('table-filter-select');
+    if (tableFilterSelect) {
+        tableFilterSelect.addEventListener('change', () => {
+            currentTablePage = 1;
+            renderOcrTable(ocrExtractedRecords);
+        });
+    }
+
+    // Pagination buttons
+    document.addEventListener('click', (e) => {
+        if (e.target.id === 'btn-prev-page') {
+            if (currentTablePage > 1) { 
+                currentTablePage--; 
+                renderOcrTable(ocrExtractedRecords); 
+            }
+        } else if (e.target.id === 'btn-next-page') {
+            const filterEl = document.getElementById('table-filter-select');
+            const searchEl = document.getElementById('table-search-input');
+            const filterVal = filterEl ? filterEl.value : 'all';
+            const searchVal = searchEl ? searchEl.value.trim().toLowerCase() : '';
+
+            // Calculate current total filtered count
+            const parsedWeights = ocrExtractedRecords
+                .map(r => parseFloat(r.weight))
+                .filter(v => !isNaN(v) && v > 0);
+            const mean = parsedWeights.length > 0 ? parsedWeights.reduce((a, b) => a + b, 0) / parsedWeights.length : 0.256;
+
+            let filtered = ocrExtractedRecords.filter(r => {
+                const w = parseFloat(r.weight);
+                const isRecordValid = isNaN(w) || (w >= mean * 0.95 && w <= mean * 1.05);
+                if (filterVal === 'valid' && !isRecordValid) return false;
+                if (filterVal === 'invalid' && isRecordValid) return false;
+                if (searchVal && 
+                    !r.weight.toLowerCase().includes(searchVal) && 
+                    !r.snr.toLowerCase().includes(searchVal) && 
+                    !r.datetime.toLowerCase().includes(searchVal) && 
+                    !r.balance_type.toLowerCase().includes(searchVal)) {
+                    return false;
+                }
+                return true;
+            });
+            const totalPages = Math.ceil(filtered.length / recordsPerPage) || 1;
+
+            if (currentTablePage < totalPages) { 
+                currentTablePage++; 
+                renderOcrTable(ocrExtractedRecords); 
+            }
+        }
+    });
+
+    function runSimulatedDemoOCR() {
+        showLaserLines();
+        if (btnPhotoClear) btnPhotoClear.setAttribute('disabled', 'true');
+        if (btnSyncCoa) btnSyncCoa.setAttribute('disabled', 'true');
+        
+        if (ocrProgressBox) {
+            ocrProgressBox.classList.remove('hidden');
+            ocrProgressFill.style.width = '0%';
+            ocrProgressPercent.textContent = '0%';
+            ocrProgressLabel.textContent = 'Khởi động máy quét AI OCR...';
+        }
+
+        const loggedMilestones = new Set();
+        const duration = 2000; // 2 seconds
+        const startTime = performance.now();
+
+        const demoRecords = [
+            { id: 1, weight: '0.258', datetime: '11.04.2026 11:13', balance_type: 'MS204S/A73', snr: 'B609149654' },
+            { id: 2, weight: '0.255', datetime: '11.04.2026 11:13', balance_type: 'MS204S/A73', snr: 'B609149654' },
+            { id: 3, weight: '0.256', datetime: '11.04.2026 11:13', balance_type: 'MS204S/A73', snr: 'B609149654' },
+            { id: 4, weight: '0.254', datetime: '11.04.2026 11:14', balance_type: 'MS204S/A73', snr: 'B609149654' },
+            { id: 5, weight: '0.252', datetime: '11.04.2026 11:14', balance_type: 'MS204S/A73', snr: 'B609149654' },
+            { id: 6, weight: '0.256', datetime: '11.04.2026 11:15', balance_type: 'MS204S/A73', snr: 'B609149654' },
+            { id: 7, weight: '0.260', datetime: '11.04.2026 11:15', balance_type: 'MS204S/A73', snr: 'B609149654' },
+            { id: 8, weight: '0.258', datetime: '11.04.2026 11:15', balance_type: 'MS204S/A73', snr: 'B609149654' },
+            { id: 9, weight: '0.255', datetime: '11.04.2026 11:15', balance_type: 'MS204S/A73', snr: 'B609149654' },
+            { id: 10, weight: '0.257', datetime: '11.04.2026 11:15', balance_type: 'MS204S/A73', snr: 'B609149654' },
+            { id: 11, weight: '0.259', datetime: '11.04.2026 11:15', balance_type: 'MS204S/A73', snr: 'B609149654' },
+            { id: 12, weight: '0.253', datetime: '11.04.2026 11:16', balance_type: 'MS204S/A73', snr: 'B609149654' },
+            { id: 13, weight: '0.258', datetime: '11.04.2026 11:16', balance_type: 'MS204S/A73', snr: 'B609149654' },
+            { id: 14, weight: '0.256', datetime: '11.04.2026 11:16', balance_type: 'MS204S/A73', snr: 'B609149654' },
+            { id: 15, weight: '0.255', datetime: '11.04.2026 11:16', balance_type: 'MS204S/A73', snr: 'B609149654' },
+            { id: 16, weight: '0.255', datetime: '11.04.2026 11:17', balance_type: 'MS204S/A73', snr: 'B609149654' },
+            { id: 17, weight: '0.253', datetime: '11.04.2026 11:17', balance_type: 'MS204S/A73', snr: 'B609149654' },
+            { id: 18, weight: '0.258', datetime: '11.04.2026 11:17', balance_type: 'MS204S/A73', snr: 'B609149654' },
+            { id: 19, weight: '0.256', datetime: '11.04.2026 11:17', balance_type: 'MS204S/A73', snr: 'B609149654' },
+            { id: 20, weight: '0.255', datetime: '11.04.2026 11:17', balance_type: 'MS204S/A73', snr: 'B609149654' }
+        ];
+
+        function updatePhotoScan(currentTime) {
+            const elapsedTime = currentTime - startTime;
+            const progress = Math.min(elapsedTime / duration, 1);
+            const percent = Math.floor(progress * 100);
+            
+            if (ocrProgressFill) ocrProgressFill.style.width = `${percent}%`;
+            if (ocrProgressPercent) ocrProgressPercent.textContent = `${percent}%`;
+            
+            if (percent >= 0) {
+                if (!loggedMilestones.has('p0')) {
+                    loggedMilestones.add('p0');
+                    addLog(`⚡ Bắt đầu Quét AI OCR Phiếu cân Phòng Lab (Demo)...`, 'process');
+                }
+                if (ocrProgressLabel) ocrProgressLabel.textContent = 'Khởi động máy quét AI OCR...';
+            }
+            
+            if (percent >= 25) {
+                if (!loggedMilestones.has('p25')) {
+                    loggedMilestones.add('p25');
+                    addLog(`Nhận diện bố cục: Phát hiện 2 cột in nhiệt kết quả cân.`, 'process');
+                }
+                if (ocrProgressLabel) ocrProgressLabel.textContent = 'Đang phân tích cấu trúc cột phiếu lab...';
+            }
+
+            if (percent >= 50) {
+                if (!loggedMilestones.has('p50')) {
+                    loggedMilestones.add('p50');
+                    addLog(`Đang trích xuất dữ liệu khối lượng (20 chỉ tiêu)...`, 'process');
+                }
+                if (ocrProgressLabel) ocrProgressLabel.textContent = 'Đang trích xuất khối lượng...';
+            }
+            
+            if (percent >= 50 && percent < 90) {
+                const pillsToFill = Math.min(20, Math.floor((percent - 50) / 2));
+                for (let i = 0; i < pillsToFill; i++) {
+                    const pillNum = i + 1;
+                    const ocrBox = document.getElementById(`box-w${pillNum}`);
+                    if (ocrBox) ocrBox.className = 'ocr-box success';
+                }
+            }
+            
+            if (percent >= 90) {
+                if (!loggedMilestones.has('p90')) {
+                    loggedMilestones.add('p90');
+                    addLog(`Trích xuất thành công 20/20 khối lượng. Đang tính toán dữ liệu...`, 'success');
+                }
+                if (ocrProgressLabel) ocrProgressLabel.textContent = 'Đang đối chiếu Dược Điển Việt Nam V...';
+            }
+            
+            if (percent < 100) {
+                requestAnimationFrame(updatePhotoScan);
+            } else {
+                if (ocrProgressLabel) ocrProgressLabel.textContent = 'Hoàn tất quét phiếu cân lab!';
+                
+                // Populate records
+                ocrExtractedRecords = [];
+                for (let i = 0; i < 20; i++) {
+                    ocrExtractedRecords.push({
+                        id: i + 1,
+                        weight: demoRecords[i].weight,
+                        datetime: demoRecords[i].datetime,
+                        balance_type: demoRecords[i].balance_type,
+                        snr: demoRecords[i].snr
+                    });
+                }
+                
+                // Render table
+                renderOcrTable(ocrExtractedRecords);
+                updateUniformityStatsAndPills();
+
+                // Set bounding boxes
+                for (let i = 0; i < 20; i++) {
+                    const ocrBox = document.getElementById(`box-w${i + 1}`);
+                    if (ocrBox) ocrBox.className = 'ocr-box success';
+                }
+
+                // Show stats
+                const mean = 0.2563;
+                const rsd = 0.82;
+                const valMean = document.getElementById('val-mean');
+                const valRsd = document.getElementById('val-rsd');
+                const valResult = document.getElementById('val-result');
+                
+                if (valMean) valMean.textContent = `${mean.toFixed(4)} g`;
+                if (valRsd) valRsd.textContent = `${rsd.toFixed(2)} %`;
+                if (valResult) {
+                    valResult.textContent = 'Đạt yêu cầu';
+                    valResult.style.color = 'var(--success)';
+                    addLog(`Kiểm định Dược Điển: Trung bình = ${mean.toFixed(4)}g | RSD = ${rsd.toFixed(2)}% (ĐẠT).`, 'success');
+                }
+
+                setTimeout(() => {
+                    if (ocrProgressBox) ocrProgressBox.classList.add('hidden');
+                    hideLaserLines();
+
+                    if (photoStatusBadge) {
+                        photoStatusBadge.textContent = `Hoàn tất (20 mẫu)`;
+                        photoStatusBadge.className = 'status-badge completed';
+                    }
+                    if (consoleStatusDot) consoleStatusDot.className = 'console-status-dot idle';
+
+                    isProcessing = false;
+                    setScanButtonState(true);
+                    if (btnResetPhoto) btnResetPhoto.removeAttribute('disabled');
+                    if (btnPhotoClear) btnPhotoClear.removeAttribute('disabled');
+                    if (btnSyncCoa) btnSyncCoa.removeAttribute('disabled');
+                    fileInput.removeAttribute('disabled');
+
+                    addLog(`🎉 <strong>OCR hoàn tất!</strong> Đã trích xuất 20 kết quả cân từ ảnh demo.`, 'success');
+                    document.getElementById('uniformity-card-glow').classList.add('active-glow');
+                }, 500);
+            }
+        }
+        requestAnimationFrame(updatePhotoScan);
+    }
+    
+    // Initialize empty progress grid on load
+    updateUniformityStatsAndPills();
 });

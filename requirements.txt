@@ -1,0 +1,14 @@
+Django>=4.2,<5.0
+python-decouple>=3.8
+Pillow>=10.0.0
+
+# OCR Libraries - Chọn 1 trong 2:
+# Option 1: Tesseract (nhẹ hơn, cần cài Tesseract-OCR riêng)
+pytesseract>=0.3.10
+
+# Option 2: EasyOCR (nặng hơn ~500MB nhưng không cần cài thêm, chính xác hơn)
+# easyocr>=1.7.0
+# torch>=2.0.0
+# torchvision>=0.15.0
+
+# Nếu muốn dùng cả 2, uncomment easyocr
