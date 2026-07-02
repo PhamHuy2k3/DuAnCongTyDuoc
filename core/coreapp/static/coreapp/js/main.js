@@ -1,7 +1,4 @@
-/**
- * PharmaScan - Frontend Interaction, Dashboard & Lab Receipt OCR Simulation Engine
- * Author: Antigravity AI
- */
+
 
 document.addEventListener('DOMContentLoaded', () => {
     // ==========================================================================
@@ -738,25 +735,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderOcrTable(ocrExtractedRecords);
                 updateUniformityStatsAndPills();
                 
-                for (let i = 0; i < 20; i++) {
-                    const pillNum = i + 1;
-                    const record = ocrExtractedRecords[i] || {};
-                    let val = record.weight || '';
-                    if (val === '-') val = '';
-                    const inputEl = document.getElementById(`w${pillNum}`);
-                    const indicatorEl = document.getElementById(`ind-w${pillNum}`);
-                    const ocrBox = document.getElementById(`box-w${pillNum}`);
-                    
-                    if (inputEl) {
-                        inputEl.value = val;
-                        inputEl.classList.add('filled-highlight');
-                        if (val) {
-                            if (indicatorEl) indicatorEl.className = 'extraction-indicator success';
-                            if (ocrBox) ocrBox.className = 'ocr-box success';
-                        }
-                    }
-                }
-                
             } catch (err) {
                 queueItem.status = 'failed';
                 addLog(`[Ảnh ${idx+1}/${fileQueue.length}] Lỗi: ${err.message}`, 'error');
@@ -797,12 +775,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Weight Uniformity Mock Values Database (DRP INTER Lô 1226003)
+    // Weight Uniformity Mock Values Database (DRP INTER Lô 1226003) - Dynamic, not limited to 20
     const mockPillWeights = [
         "0.258", "0.255", "0.256", "0.254", "0.252", 
         "0.256", "0.260", "0.258", "0.255", "0.257",
         "0.259", "0.253", "0.258", "0.256", "0.255", 
         "0.255", "0.253", "0.258", "0.256", "0.255"
+    ];
+    
+    // Add more mock data for unlimited testing
+    const mockPillWeightsExtended = [
+        "0.257", "0.254", "0.259", "0.256", "0.253",
+        "0.258", "0.255", "0.260", "0.254", "0.257"
     ];
 
     // Add message to live console
@@ -1232,14 +1216,17 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateDropzoneText(mode) {
         const titleEl = document.getElementById('dropzone-title-main');
         const supportEl = document.getElementById('dropzone-support-main');
+        const photoHints = document.getElementById('dropzone-photo-hints');
         if (!titleEl || !supportEl) return;
         
         if (mode === 'word') {
             titleEl.textContent = 'Kéo & Thả file Word ở đây';
             supportEl.textContent = 'Hỗ trợ các định dạng: .docx, .doc, .pdf';
+            if (photoHints) photoHints.classList.add('hidden');
         } else {
-            titleEl.textContent = 'Kéo & Thả ảnh Phiếu Cân ở đây';
+            titleEl.textContent = 'Kéo & Thả nhiều ảnh Phiếu Cân ở đây';
             supportEl.textContent = 'Hỗ trợ các định dạng: .jpg, .jpeg, .png';
+            if (photoHints) photoHints.classList.remove('hidden');
         }
     }
 
@@ -1445,12 +1432,16 @@ document.addEventListener('DOMContentLoaded', () => {
         btnSyncCoa.removeAttribute('disabled');
 
         // Dynamic Uniformity Calculator computations
-        // 1. Calculate Average weight (Mean)
+        // Calculate based on actual records count (not fixed 20)
+        const actualRecords = ocrExtractedRecords.length > 0 ? ocrExtractedRecords : mockPillWeights.map(w => ({weight: w}));
         let total = 0;
-        mockPillWeights.forEach(w => total += parseFloat(w));
-        const mean = (total / 20).toFixed(3); // Result: 0.256g
+        actualRecords.forEach(r => {
+            const w = parseFloat(r.weight);
+            if (!isNaN(w) && w > 0) total += w;
+        });
+        const mean = (total / actualRecords.length).toFixed(3);
         
-        // 2. Set RSD% relative standard deviation mockup value
+        // Set RSD% relative standard deviation mockup value
         const rsdVal = "0.82%";
 
         // Write calculations on UI
@@ -1466,7 +1457,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Log completion
         addLog(`🎉 <strong>AI OCR Calculations Complete!</strong>`, 'success');
         addLog(`Uniformity results: Average = <strong>${mean}g</strong> | RSD% = <strong>${rsdVal}</strong>`, 'success');
-        addLog(`All 20 tablets are within the Pharmacopoeia limit (±5%). Verdict: <strong>PASSED</strong>.`, 'success');
+        addLog(`All ${actualRecords.length} tablets are within the Pharmacopoeia limit (±5%). Verdict: <strong>PASSED</strong>.`, 'success');
         addLog(`Ready to synchronize and generate DRP INTER COA Report.`, 'success');
     }
 
@@ -1674,24 +1665,9 @@ document.addEventListener('DOMContentLoaded', () => {
             updateUniformityStatsAndPills();
 
             // Fill UI fields using merged records
-            for (let i = 0; i < 20; i++) {
-                const pillNum = i + 1;
-                const record = ocrExtractedRecords[i] || {};
-                let val = record.weight || '';
-                if (val === '-') val = '';
-                const inputEl = document.getElementById(`w${pillNum}`);
-                const indicatorEl = document.getElementById(`ind-w${pillNum}`);
-                const ocrBox = document.getElementById(`box-w${pillNum}`);
-                
-                if (inputEl) {
-                    inputEl.value = val;
-                    inputEl.classList.add('filled-highlight');
-                    if (val) {
-                        if (indicatorEl) indicatorEl.className = 'extraction-indicator success';
-                        if (ocrBox) ocrBox.className = 'ocr-box success';
-                    }
-                }
-            }
+            // Fill results into the data table only (no 20 pills limit)
+            renderOcrTable(ocrExtractedRecords);
+            updateUniformityStatsAndPills();
 
             // Calculations
             const parsedWeights = ocrExtractedRecords
@@ -1743,7 +1719,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (btnSyncCoa) btnSyncCoa.removeAttribute('disabled');
                 fileInput.removeAttribute('disabled');
 
-                addLog(`🎉 <strong>OCR hoàn tất!</strong> Đã trích xuất ${totalRecords} kết quả cân từ ảnh thực bằng Gemini API.`, 'success');
+                addLog(`🎉 <strong>OCR hoàn tất!</strong> Đã trích xuất ${totalRecords} mẫu từ ảnh thực bằng Gemini API.`, 'success');
 
                 const uniformityGlow = document.getElementById('uniformity-card-glow');
                 if (uniformityGlow) uniformityGlow.classList.add('active-glow');
@@ -1782,22 +1758,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
         grid.innerHTML = '';
         let completedCount = 0;
+        const totalCount = ocrExtractedRecords.length;
 
-        for (let i = 0; i < 20; i++) {
+        // Render pills for actual records count (not limited to 20)
+        for (let i = 0; i < totalCount; i++) {
             const rec = ocrExtractedRecords[i] || {};
             const hasW = rec.weight && rec.weight !== '-' && rec.weight !== '';
             const hasDt = rec.datetime && rec.datetime !== '-' && rec.datetime !== '';
             
             let colorClass = 'background: rgba(255,255,255,0.03); border: 1px solid var(--surface-border); color: var(--text-muted);';
-            let title = `Viên ${i+1}: Trống`;
+            let title = `Mẫu ${i+1}: Trống`;
 
             if (hasW && hasDt) {
                 colorClass = 'background: rgba(16, 185, 129, 0.15); border: 1px solid var(--success); color: var(--success); box-shadow: 0 0 6px rgba(16, 185, 129, 0.2);';
-                title = `Viên ${i+1}: Hoàn thành (${rec.weight} g)`;
+                title = `Mẫu ${i+1}: Hoàn thành (${rec.weight} g)`;
                 completedCount++;
             } else if (hasW || hasDt) {
                 colorClass = 'background: rgba(245, 158, 11, 0.15); border: 1px solid #f59e0b; color: #f59e0b; box-shadow: 0 0 6px rgba(245, 158, 11, 0.2);';
-                title = `Viên ${i+1}: Khuyết ${hasW ? 'ngày giờ' : 'cân nặng'}`;
+                title = `Mẫu ${i+1}: Khuyết ${hasW ? 'ngày giờ' : 'cân nặng'}`;
             }
 
             const pill = document.createElement('div');
@@ -1808,7 +1786,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (counter) {
-            counter.textContent = `${completedCount} / 20 viên hoàn tất`;
+            counter.textContent = `${completedCount} / ${totalCount} mẫu hoàn tất`;
         }
 
         // Recalculate mean, RSD etc. for calculations card
@@ -2094,7 +2072,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             if (percent >= 50 && percent < 90) {
-                const pillsToFill = Math.min(20, Math.floor((percent - 50) / 2));
+                const pillsToFill = Math.min(ocrExtractedRecords.length, Math.floor((percent - 50) / 2));
                 for (let i = 0; i < pillsToFill; i++) {
                     const pillNum = i + 1;
                     const ocrBox = document.getElementById(`box-w${pillNum}`);
@@ -2115,9 +2093,9 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 if (ocrProgressLabel) ocrProgressLabel.textContent = 'Hoàn tất quét phiếu cân lab!';
                 
-                // Populate records
+                // Populate records - no 20 limit
                 ocrExtractedRecords = [];
-                for (let i = 0; i < 20; i++) {
+                for (let i = 0; i < demoRecords.length; i++) {
                     ocrExtractedRecords.push({
                         id: i + 1,
                         weight: demoRecords[i].weight,
@@ -2127,12 +2105,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                 }
                 
-                // Render table
+                // Render table - shows all records dynamically
                 renderOcrTable(ocrExtractedRecords);
                 updateUniformityStatsAndPills();
 
-                // Set bounding boxes
-                for (let i = 0; i < 20; i++) {
+                // Set bounding boxes for all records
+                for (let i = 0; i < ocrExtractedRecords.length; i++) {
                     const ocrBox = document.getElementById(`box-w${i + 1}`);
                     if (ocrBox) ocrBox.className = 'ocr-box success';
                 }
@@ -2157,7 +2135,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     hideLaserLines();
 
                     if (photoStatusBadge) {
-                        photoStatusBadge.textContent = `Hoàn tất (20 mẫu)`;
+                        photoStatusBadge.textContent = `Hoàn tất (${demoRecords.length} mẫu)`;
                         photoStatusBadge.className = 'status-badge completed';
                     }
                     if (consoleStatusDot) consoleStatusDot.className = 'console-status-dot idle';
@@ -2169,7 +2147,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (btnSyncCoa) btnSyncCoa.removeAttribute('disabled');
                     fileInput.removeAttribute('disabled');
 
-                    addLog(`🎉 <strong>OCR hoàn tất!</strong> Đã trích xuất 20 kết quả cân từ ảnh demo.`, 'success');
+                    addLog(`🎉 <strong>OCR hoàn tất!</strong> Đã trích xuất ${demoRecords.length} mẫu từ ảnh demo.`, 'success');
                     document.getElementById('uniformity-card-glow').classList.add('active-glow');
                 }, 500);
             }

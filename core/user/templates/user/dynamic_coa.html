@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Phiếu Kiểm Nghiệm - COA</title>
+    <style>
+        @media print {
+            @page { margin: 0; }
+            body { margin: 0; }
+            .coa-page { page-break-after: always; }
+            .no-print { display: none; }
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        
+        .coa-header {
+            text-align: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #333;
+            padding-bottom: 10px;
+        }
+        
+        .coa-header h1 {
+            margin: 0;
+            font-size: 24px;
+            color: #333;
+        }
+        
+        .coa-header p {
+            margin: 5px 0;
+            color: #666;
+        }
+        
+        .coa-record {
+            border: 1px solid #333;
+            padding: 15px;
+            margin-bottom: 20px;
+            background: white;
+        }
+        
+        .coa-record h3 {
+            background: #333;
+            color: white;
+            padding: 8px 12px;
+            margin: -15px -15px 15px -15px;
+        }
+        
+        .coa-field {
+            display: flex;
+            margin: 8px 0;
+        }
+        
+        .coa-label {
+            font-weight: bold;
+            width: 180px;
+            padding-right: 10px;
+        }
+        
+        .coa-value {
+            flex: 1;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        
+        .coa-statistics {
+            margin-top: 20px;
+            padding: 15px;
+            background: #e8f4e8;
+            border: 1px solid #4caf50;
+            border-radius: 4px;
+        }
+        
+        .coa-statistics h3 {
+            margin-top: 0;
+            color: #2e7d32;
+        }
+        
+        .coa-statistics table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .coa-statistics td {
+            padding: 8px;
+            border-bottom: 1px solid #c8e6c9;
+        }
+        
+        .coa-statistics td:first-child {
+            font-weight: bold;
+            width: 150px;
+        }
+        
+        .coa-footer {
+            margin-top: 20px;
+            text-align: center;
+            padding-top: 20px;
+            border-top: 1px solid #ccc;
+        }
+    </style>
+</head>
+<body>
+    <div class="coa-header">
+        <h1>PHIẾU KIỂM NHIỆM - CÁP PHÉP XUẤT XƯỞNG</h1>
+        <p>Phiếu Kiểm Nghiệm Độ Đồng Đều Khối Lượng</p>
+        <p>Generated at: {{ generated_at }}</p>
+        <p>User: {{ user.get_full_name|default:user.username }}</p>
+    </div>
+    
+    {% for record in records %}
+    <div class="coa-page">
+        <div class="coa-record">
+            <h3>Viên {{ record.pill_number|default:forloop.counter }}</h3>
+            
+            <div class="coa-field">
+                <span class="coa-label">STT Viên:</span>
+                <span class="coa-value">{{ record.pill_number|default:forloop.counter }}</span>
+            </div>
+            
+            <div class="coa-field">
+                <span class="coa-label">Khối lượng:</span>
+                <span class="coa-value">{{ record.weight }}</span>
+            </div>
+            
+            <div class="coa-field">
+                <span class="coa-label">Ngày giờ:</span>
+                <span class="coa-value">{{ record.datetime }}</span>
+            </div>
+            
+            <div class="coa-field">
+                <span class="coa-label">Balance Type:</span>
+                <span class="coa-value">{{ record.balance_type }}</span>
+            </div>
+            
+            <div class="coa-field">
+                <span class="coa-label">SNR:</span>
+                <span class="coa-value">{{ record.snr }}</span>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    
+    <div class="coa-footer">
+        <p>Đã in bởi PharmaScan - Hệ thống Quét Tự Động Hóa Nhập Liệu</p>
+        <p class="no-print" style="margin-top: 20px;">
+            <button onclick="window.print()" style="padding: 10px 20px; font-size: 16px; cursor: pointer;">
+                In Phiếu
+            </button>
+            <button onclick="window.close()" style="padding: 10px 20px; font-size: 16px; cursor: pointer; margin-left: 10px;">
+                Đóng
+            </button>
+        </p>
+    </div>
+</body>
+</html>

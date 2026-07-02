@@ -3,6 +3,36 @@ from django.conf import settings
 from django.utils import timezone
 
 
+class WeightUniformityRecord(models.Model):
+    """
+    Stores individual weight measurements from OCR scanning.
+    This model supports unlimited records (no 20-page limit).
+    """
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+        verbose_name="Người quét"
+    )
+    scanned_document = models.ForeignKey(
+        'ScannedDocument', on_delete=models.CASCADE,
+        null=True, blank=True,
+        verbose_name="Tài liệu đã quét"
+    )
+    pill_number = models.IntegerField(verbose_name="Số viên")
+    weight = models.CharField(max_length=50, verbose_name="Trọng lượng")
+    timestamp = models.DateTimeField(verbose_name="Thời gian đo")
+    balance_type = models.CharField(max_length=100, verbose_name="Loại cân")
+    snr = models.CharField(max_length=100, verbose_name="Số SNR")
+    created_at = models.DateTimeField(default=timezone.now, verbose_name="Ngày tạo")
+
+    class Meta:
+        verbose_name = "Bản ghi đo trọng lượng"
+        verbose_name_plural = "Các bản ghi đo trọng lượng"
+        ordering = ['pill_number']
+
+    def __str__(self):
+        return f"Viên {self.pill_number}: {self.weight}"
+
+
 class MedicineItem(models.Model):
     trade_name = models.CharField(max_length=255, verbose_name="Tên thương mại")
     active_ingredient = models.CharField(max_length=255, verbose_name="Hoạt chất")

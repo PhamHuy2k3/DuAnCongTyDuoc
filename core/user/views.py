@@ -8,12 +8,14 @@ from django.contrib import messages
 from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
 from django.core.exceptions import ValidationError
-from .models import ScannedDocument, MedicineItem
+from .models import ScannedDocument, MedicineItem, WeightUniformityRecord
 from .services import process_image, validate_image_file, extract_balance_receipt_records
 import json
 import os
 import re
 import logging
+from datetime import datetime
+from django.db.models import Avg
 
 logger = logging.getLogger('user')
 
@@ -323,4 +325,90 @@ def scan_receipt_api(request):
         
     except Exception as e:
         logger.error(f"Error processing receipt vision OCR: {str(e)}")
+        return JsonResponse({'success': False, 'error': f'Lỗi hệ thống: {str(e)}'}, status=500)
+
+
+@csrf_exempt
+@login_required(login_url='login')
+def generate_coa_from_scanned_data(request):
+    """
+    Generate COA HTML dynamically from scanned weight records.
+    This replaces the hardcoded form1.html approach.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Chỉ hỗ trợ phương thức POST'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        records = data.get('records', [])
+        
+        if not records:
+            return JsonResponse({
+                'success': False,
+                'error': 'Không có dữ liệu để tạo COA'
+            }, status=400)
+        
+        # Calculate statistics
+        weights = []
+        for record in records:
+            try:
+                # Parse weight value like "0.258(1) g"
+                weight_str = str(record.get('weight', '')).replace(' ', '').replace('g', '').replace('G', '')
+                # Extract numeric part before parenthesis
+                match = re.match(r'([\d.,]+)', weight_str)
+                if match:
+                    weight_val = float(match.group(1).replace(',', '.'))
+                    weights.append(weight_val)
+            except (ValueError, AttributeError):
+                continue
+        
+        # Calculate statistics
+        mean_weight = 0.0
+        rsd = 0.0
+        if weights:
+            n = len(weights)
+            mean_weight = sum(weights) / n
+            variance = sum((w - mean_weight) ** 2 for w in weights) / n if n > 1 else 0
+            std_dev = variance ** 0.5
+            rsd = (std_dev / mean_weight * 100) if mean_weight > 0 else 0
+        
+        # Save records to database
+        for idx, record in enumerate(records, start=1):
+            WeightUniformityRecord.objects.create(
+                user=request.user,
+                pill_number=idx,
+                weight=str(record.get('weight', '')),
+                timestamp=timezone.now(),
+                balance_type=str(record.get('balance_type', '')),
+                snr=str(record.get('snr', ''))
+            )
+        
+        # Prepare context for template
+        context = {
+            'records': records,
+            'mean_weight': round(mean_weight, 4),
+            'rsd': round(rsd, 2),
+            'n': len(records),
+            'user': request.user,
+            'generated_at': timezone.now().strftime('%d/%m/%Y %H:%M:%S')
+        }
+        
+        # Generate HTML
+        from django.template.loader import render_to_string
+        html_content = render_to_string('user/dynamic_coa.html', context)
+        
+        return JsonResponse({
+            'success': True,
+            'html': html_content,
+            'statistics': {
+                'mean_weight': round(mean_weight, 4),
+                'rsd': round(rsd, 2),
+                'n': len(records)
+            }
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Dữ liệu không hợp lệ'}, status=400)
+    except Exception as e:
+        logger.error(f"Error generating COA: {str(e)}")
         return JsonResponse({'success': False, 'error': f'Lỗi hệ thống: {str(e)}'}, status=500)

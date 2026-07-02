@@ -266,6 +266,39 @@
 
                     <!-- 2. PHOTO SELECTOR INSTRUCTIONS (Shown in Photo Tab Mode) -->
                     <div id="photo-templates-selection" class="hidden">
+                        <!-- Multi-select hint banner -->
+                        <div class="multi-select-hint-banner" style="background: linear-gradient(135deg, rgba(14, 165, 233, 0.12) 0%, rgba(16, 185, 129, 0.12) 100%); border: 1px solid rgba(14, 165, 233, 0.3); border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 12px;">
+                            <div style="background: rgba(14, 165, 233, 0.15); border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" style="width: 18px; height: 18px;"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                            </div>
+                            <div style="flex: 1;">
+                                <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-primary); margin-bottom: 2px;">Chọn nhiều ảnh cùng lúc để ghép dữ liệu</div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted);">Hệ thống tự động nhận diện vùng gối đầu và ghép nối các bản ghi trùng lặp</div>
+                            </div>
+                        </div>
+
+                        <!-- Pillow position selection UI -->
+                        <div class="pillow-position-selector" style="background: rgba(0,0,0,0.15); border: 1px solid var(--surface-border); border-radius: 8px; padding: 14px 16px; margin-bottom: 16px;">
+                            <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-primary); margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px; color: var(--accent);"><path d="M4 14h6v6H4zm10 0h6v6h-6zM4 4h6v6H4zm10 0h6v6h-6z"/></svg>
+                                Vị trí gối đầu ảnh (chọn loại ảnh bạn sẽ tải lên):
+                            </div>
+                            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                <label class="pillow-checkbox-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 8px 12px; background: rgba(255,255,255,0.03); border: 1px solid var(--surface-border); border-radius: 6px; transition: var(--transition-fast);" id="label-pillow-auto">
+                                    <input type="radio" name="pillow_position" value="auto" checked style="accent-color: var(--accent);">
+                                    <span style="font-size: 0.76rem; color: var(--text-secondary);">Tự động phát hiện (Khuyên dùng)</span>
+                                </label>
+                                <label class="pillow-checkbox-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 8px 12px; background: rgba(255,255,255,0.03); border: 1px solid var(--surface-border); border-radius: 6px; transition: var(--transition-fast);" id="label-pillow-top">
+                                    <input type="radio" name="pillow_position" value="top" style="accent-color: var(--accent);">
+                                    <span style="font-size: 0.76rem; color: var(--text-secondary);">Gối trên (khởi đầu từ viên 1)</span>
+                                </label>
+                                <label class="pillow-checkbox-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 8px 12px; background: rgba(255,255,255,0.03); border: 1px solid var(--surface-border); border-radius: 6px; transition: var(--transition-fast);" id="label-pillow-bottom">
+                                    <input type="radio" name="pillow_position" value="bottom" style="accent-color: var(--accent);">
+                                    <span style="font-size: 0.76rem; color: var(--text-secondary);">Gối dưới (khởi đầu từ viên 11)</span>
+                                </label>
+                            </div>
+                        </div>
+
                         <div class="quick-templates">
                             <span class="quick-title">Chọn tệp ảnh mẫu nhanh (Chạy thử):</span>
                             <div class="template-buttons">
@@ -278,7 +311,7 @@
                     </div>
 
                     <!-- Dropzone Container -->
-                    <div class="dropzone" id="document-dropzone" style="height: 240px; margin-bottom: 12px;">
+                    <div class="dropzone" id="document-dropzone" style="min-height: 240px; margin-bottom: 12px;">
                         <input type="file" id="file-input" class="hidden-input" accept=".docx,.doc,.pdf,.txt,.jpg,.jpeg,.png" multiple>
                         
                         <!-- A. Dropzone Empty / Prompt state -->
@@ -292,6 +325,23 @@
                             </div>
                             <h5 id="dropzone-title-main">Kéo & Thả file Word ở đây</h5>
                             <p id="dropzone-subtitle-main">Hoặc <span class="browse-link">chọn tệp từ máy tính</span></p>
+                            <!-- Dynamic hint text for photo mode -->
+                            <div id="dropzone-photo-hints" class="hidden" style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--surface-border);">
+                                <div style="display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;">
+                                    <span style="font-size: 0.72rem; padding: 4px 10px; background: rgba(14, 165, 233, 0.1); border: 1px solid rgba(14, 165, 233, 0.3); border-radius: 12px; color: var(--accent); font-weight: 600;">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 12px; height: 12px; vertical-align: middle; margin-right: 4px;"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                                        Có thể chọn nhiều ảnh
+                                    </span>
+                                    <span style="font-size: 0.72rem; padding: 4px 10px; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 12px; color: var(--success); font-weight: 600;">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 12px; height: 12px; vertical-align: middle; margin-right: 4px;"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+                                        Tự động ghép gối đầu
+                                    </span>
+                                    <span style="font-size: 0.72rem; padding: 4px 10px; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 12px; color: #f59e0b; font-weight: 600;">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 12px; height: 12px; vertical-align: middle; margin-right: 4px;"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg>
+                                        Không giới hạn số lượng
+                                    </span>
+                                </div>
+                            </div>
                             <span class="file-support-text" id="dropzone-support-main">Hỗ trợ các định dạng: .docx, .doc, .pdf</span>
                         </div>
 
@@ -636,14 +686,14 @@
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                                 <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width: 14px; height: 14px; color: var(--accent);"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
-                                    Tiến trình ghép mẫu (20 viên)
+                                    Kết quả quét OCR
                                 </span>
-                                <span id="session-stitch-counter" style="font-size: 0.75rem; font-weight: 700; color: var(--accent);">0 / 20 viên hoàn tất</span>
+                                <span id="session-stitch-counter" style="font-size: 0.75rem; font-weight: 700; color: var(--accent);">0 mẫu hoàn tất</span>
                             </div>
                             
-                            <!-- 20 Pills progress visualization grid -->
-                            <div id="pill-progress-grid" style="display: grid; grid-template-columns: repeat(10, 1fr); gap: 6px; margin-bottom: 10px;">
-                                <!-- Will be rendered dynamically via JS -->
+                            <!-- Progress visualization grid - dynamic unlimited -->
+                            <div id="pill-progress-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(28px, 1fr)); gap: 6px; margin-bottom: 10px;">
+                                <!-- Will be rendered dynamically via JS - no 20 limit -->
                             </div>
 
                             <div class="collapsible-guide-card" style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px; margin-top: 8px;">
@@ -653,9 +703,10 @@
                                         <span style="font-size: 0.65rem; color: var(--accent); font-weight: 700;">Xem chi tiết ▾</span>
                                     </summary>
                                     <div style="font-size: 0.72rem; color: var(--text-muted); line-height: 1.45; padding-top: 8px; display: flex; flex-direction: column; gap: 6px; pointer-events: none;">
-                                        <p style="margin: 0;">• <strong>Độc lập tuyệt đối giữa 2 cột:</strong> Hệ thống đọc độc lập 2 dải giấy cân, tuyệt đối không tự ý nối chéo dữ liệu qua lại.</p>
-                                        <p style="margin: 0;">• <strong>Chụp gối đầu nhiều ảnh:</strong> Tải nhiều ảnh kế tiếp có phần đè lên nhau, hệ thống tự lọc trùng và chắp vá các hàng khuyết biên thành trọn vẹn.</p>
-                                        <p style="margin: 0;">• <strong>Sửa tay trực tiếp:</strong> Nhấp vào bất kỳ ô nào (Cân nặng, Ngày giờ, SNR) trong bảng để tự sửa nhanh nếu AI nhận diện nhầm.</p>
+                                        <p style="margin: 0;">• <strong>Chọn nhiều ảnh:</strong> Kéo & thả hoặc chọn nhiều ảnh cùng lúc - hệ thống tự động ghép nối.</p>
+                                        <p style="margin: 0;">• <strong>Vị trí gối đầu:</strong> Chọn "Tự động phát hiện" hoặc "Gối trên/Gối dưới" để hệ thống nhận diện đúng vị trí.</p>
+                                        <p style="margin: 0;">• <strong>Không giới hạn số lượng:</strong> Quét bao nhiêu ảnh cũng được - hệ thống tự động ghép và sắp xếp.</p>
+                                        <p style="margin: 0;">• <strong>Sửa tay trực tiếp:</strong> Nhấp vào bất kỳ ô nào trong bảng để tự sửa nhanh nếu AI nhận diện nhầm.</p>
                                     </div>
                                 </details>
                             </div>
@@ -676,7 +727,7 @@
                                 </div>
                             </div>
 
-                            <!-- Data Table -->
+                            <!-- Data Table - Dynamic, no 20 limit -->
                             <div class="data-table-container" style="overflow-x: auto; border: 1px solid var(--surface-border); border-radius: 8px; margin-bottom: 12px;">
                                 <table class="data-table" id="weights-data-table" style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.85rem;">
                                     <thead style="background: rgba(15, 23, 42, 0.4); color: #94a3b8; border-bottom: 1px solid var(--surface-border);">
@@ -690,13 +741,13 @@
                                         </tr>
                                     </thead>
                                     <tbody id="table-body">
-                                        <!-- Rows render dynamically via JS -->
-                                        <tr><td colspan="6" style="text-align: center; padding: 20px; color: var(--text-muted);">Chưa có dữ liệu</td></tr>
+                                        <!-- Rows render dynamically via JS - unlimited records -->
+                                        <tr><td colspan="6" style="text-align: center; padding: 20px; color: var(--text-muted);">Chưa có dữ liệu - Tải ảnh để quét</td></tr>
                                     </tbody>
                                 </table>
                             </div>
 
-                            <!-- Pagination -->
+                            <!-- Pagination - Dynamic for unlimited records -->
                             <div class="table-pagination" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; font-size: 0.8rem;">
                                 <span style="color: var(--text-muted);" id="pagination-info">Hiển thị 0 bản ghi</span>
                                 <div class="pagination-controls" style="display: flex; gap: 4px;">
@@ -741,3 +792,100 @@
     </div>
 </div>
 {% endblock %}
+
+<script>
+// Global array to store weight records
+let weightRecords = [];
+let isPhotoTabActive = false;
+
+// DOM Elements
+const btnSyncCOA = document.getElementById('btn-sync-coa');
+const tableBody = document.getElementById('table-body');
+
+// Function to collect weight data from the table
+function collectWeightRecords() {
+    const records = [];
+    const rows = tableBody.querySelectorAll('tr[data-record="true"]');
+    
+    rows.forEach(row => {
+        const cells = row.querySelectorAll('td');
+        if (cells.length >= 5) {
+            records.push({
+                pill_number: cells[0].textContent.trim(),
+                weight: cells[1].textContent.trim(),
+                datetime: cells[2].textContent.trim(),
+                balance_type: cells[3].textContent.trim(),
+                snr: cells[4].textContent.trim()
+            });
+        }
+    });
+    
+    return records;
+}
+
+// Function to handle COA sync
+async function syncToCOA() {
+    const records = collectWeightRecords();
+    
+    if (records.length === 0) {
+        alert('Không có dữ liệu để tạo COA. Vui lòng quét ảnh trước.');
+        return;
+    }
+    
+    try {
+        // Disable button during processing
+        btnSyncCOA.disabled = true;
+        btnSyncCOA.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px; height:16px;"><circle cx="12" cy="12" r="10" style="stroke-dasharray: 40; animation: spin 1s linear infinite"/></svg><span>Đang tạo COA...</span>';
+        
+        // Call the COA generation API
+        const response = await fetch('/scan/coa-api/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
+            },
+            body: JSON.stringify({ records: records })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // Open COA in new window
+            const coaWindow = window.open('', '_blank');
+            if (coaWindow) {
+                coaWindow.document.write(result.html);
+                coaWindow.document.close();
+            } else {
+                alert('Không thể mở COA. Vui lòng kiểm tra cài đặt trình duyệt.');
+            }
+            
+            // Update statistics
+            document.getElementById('session-stitch-counter').textContent = `${records.length} mẫu hoàn tất`;
+        } else {
+            alert(`Lỗi: ${result.error}`);
+        }
+        
+    } catch (error) {
+        console.error('Error syncing to COA:', error);
+        alert('Lỗi khi tạo COA. Vui lòng thử lại.');
+    } finally {
+        // Re-enable button
+        btnSyncCOA.disabled = false;
+        btnSyncCOA.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px; height:16px;"><path d="M17 3a2.82 2.82 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path><path d="m15 5 4 4"></path></svg><span>Đồng bộ sang Phiếu COA</span>';
+    }
+}
+
+// Event listener for COA sync button
+btnSyncCOA.addEventListener('click', syncToCOA);
+
+// Add CSS for animation
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes spin {
+        0% { stroke-dasharray: 1, 200; stroke-dashoffset: 0; }
+        50% { stroke-dasharray: 89, 200; stroke-dashoffset: -35; }
+        100% { stroke-dasharray: 89, 200; stroke-dashoffset: -124; }
+    }
+`;
+document.head.appendChild(style);
+</script>
