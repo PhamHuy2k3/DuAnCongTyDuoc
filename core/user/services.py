@@ -11,6 +11,8 @@ from io import BytesIO
 from PIL import Image
 import logging
 from decouple import config
+import cv2
+import numpy as np
 
 logger = logging.getLogger('user')
 
@@ -234,11 +236,8 @@ DEFAULT_RECEIPT_MODELS = [
 ]
 
 DEFAULT_GEMINI_MODELS = [
-    'gemini-3.5-flash',
     'gemini-3.1-flash-lite',
-    'gemini-2.5-flash',
-    'gemini-2.0-flash',
-    'gemini-1.5-flash',
+    'gemini-3.0-flash',
 ]
 
 
@@ -421,11 +420,14 @@ def _call_receipt_gemini_model(image_data_uri, model, base_url, api_key):
                 'parts': [
                     {
                         'text': (
-                            'Extract the receipt text from this two-column balance printout. '
-                            'The left column and right column are two separate physical tapes. '
-                            'Do NOT stitch, merge, or pair any records across columns. '
-                            'Preserve the exact weight format such as 0.256(1) g. '
-                            'Return JSON only with a records array in reading order (left column top-to-bottom first, then right column top-to-bottom).'
+                            'Extract the receipt text from this two-column balance printout.\n'
+                            'The left column and right column are two separate physical tapes. Do NOT stitch, merge, or pair any records across columns.\n'
+                            'Read the left column top-to-bottom first, then the right column top-to-bottom.\n'
+                            'CRITICAL: Each measurement is a block separated by dashed lines.\n'
+                            '- The very first block at the top of a column has only datetime/metadata but NO weight. You MUST set weight to null for this block. Do NOT pair it with the weight of the second block.\n'
+                            '- The very last block at the bottom of a column may have only a weight but NO datetime/metadata. You MUST set datetime/metadata to null for this block.\n'
+                            'Preserve the exact weight format like 0.256(1) g.\n'
+                            'Return JSON only with a records array.'
                         )
                     },
                     {
@@ -446,12 +448,15 @@ def _call_receipt_gemini_model(image_data_uri, model, base_url, api_key):
             'parts': [
                 {
                     'text': (
-                        'You are a vision OCR engine for a laboratory balance receipt. '
-                        'Return only JSON with a records array. Each record must have weight, datetime, balance_type, snr, and is_partial. '
-                        'The left column and right column are independent paper tapes; do NOT pair or merge split data across columns. '
-                        'Read the left column top-to-bottom first, then the right column top-to-bottom. '
-                        'Keep exact numeric text, including parentheses, and never round values. '
-                        'Do not invent missing digits. Ignore handwritten signatures and decorative marks.'
+                        'You are a vision OCR engine for a laboratory balance receipt.\n'
+                        'CRITICAL VALIDATION:\n'
+                        '- First, analyze if the image actually contains a laboratory balance printout tape (characterized by a vertical white paper strip, weight lines starting with "N" and ending with "g", dashed separator lines "----", and balance metadata like "Balance Type", "SNR").\n'
+                        '- If the image is completely unrelated (e.g. it is a landscape, a cat, a person, a document of another type, or random text without balance printout patterns), you MUST return a JSON object with: {"error_code": "unrelated_image"}.\n'
+
+                        'NORMAL EXTRACTION:\n'
+                        '- If it is a valid receipt, return JSON with a records array. Each record must have weight, datetime, balance_type, snr.\n'
+                        '- If a block has no weight, set weight to null. If a block has no datetime/metadata, set datetime/balance_type/snr to null.\n'
+                        '- Never pair metadata from one block with weight from another block. Read top-to-bottom.'
                     )
                 }
             ]
@@ -638,6 +643,11 @@ def extract_balance_receipt_records(image_path):
         try:
             result = _call_receipt_gemini_model(image_data_uri, model, gemini_base_url, gemini_key)
             has_success = True
+            
+            # If the result contains a validation error code, return it directly
+            if isinstance(result, dict) and 'error_code' in result:
+                return result
+                
             records = result.get('records', []) if isinstance(result, dict) else []
             normalized_records = _normalize_vision_records(records)
             if normalized_records:
@@ -651,3 +661,182 @@ def extract_balance_receipt_records(image_path):
         raise ValueError(f'Không thể trích xuất dữ liệu bằng vision API: {last_error}')
 
     return []
+
+
+def analyze_blur_and_regions(image_file):
+    """
+    Analyzes the image for blurriness globally and locally.
+    Returns: (is_blurry, global_variance, blurred_regions)
+    """
+    try:
+        image_file.seek(0)
+        file_bytes = np.frombuffer(image_file.read(), dtype=np.uint8)
+        img = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
+        if img is None:
+            return False, 0.0, []
+        
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        h, w = gray.shape
+        
+        global_var = cv2.Laplacian(gray, cv2.CV_64F).var()
+        
+        # 1. Global blur check: Extremely blurry images have very low variance
+        if global_var < 50.0:
+            return True, global_var, [{'x': 0, 'y': 0, 'w': 100, 'h': 100}]
+        
+        # 2. Local grid analysis with Relative Variance Bounding
+        grid_rows, grid_cols = 12, 12
+        block_h, block_w = h // grid_rows, w // grid_cols
+        active_blocks = []
+        
+        for r in range(grid_rows):
+            for c in range(grid_cols):
+                y1, y2 = r * block_h, (r + 1) * block_h
+                x1, x2 = c * block_w, (c + 1) * block_w
+                block = gray[y1:y2, x1:x2]
+                
+                block_std = np.std(block)
+                # If std > 12.0, block contains high contrast content (text)
+                if block_std > 12.0:
+                    block_var = cv2.Laplacian(block, cv2.CV_64F).var()
+                    active_blocks.append({
+                        'r': r, 'c': c, 'var': block_var,
+                        'x_pct': (x1 / w) * 100, 'y_pct': (y1 / h) * 100,
+                        'w_pct': ((x2 - x1) / w) * 100, 'h_pct': ((y2 - y1) / h) * 100
+                    })
+        
+        blurred_regions = []
+        active_count = len(active_blocks)
+        is_blurry = False
+        
+        if active_count > 0:
+            max_var = max([b['var'] for b in active_blocks])
+            # Dynamic threshold: bounded between 30 and 120, adjusting to image sharpness
+            blur_thresh = min(max(0.02 * max_var, 30.0), 120.0)
+            
+            for b in active_blocks:
+                if b['var'] < blur_thresh:
+                    blurred_regions.append({
+                        'x': round(b['x_pct'], 2),
+                        'y': round(b['y_pct'], 2),
+                        'w': round(b['w_pct'], 2),
+                        'h': round(b['h_pct'], 2)
+                    })
+                    
+            blur_ratio = len(blurred_regions) / active_count
+            if blur_ratio >= 0.25 and active_count >= 5:
+                is_blurry = True
+        
+        return is_blurry, global_var, blurred_regions
+        
+    except Exception as e:
+        logger.error(f"Error in blur detection: {str(e)}")
+        return False, 0.0, []
+        
+    except Exception as e:
+        logger.error(f"Error in blur detection: {str(e)}")
+        return False, 0.0, []
+
+def analyze_image_quality_with_ai(image_file):
+    """
+    Uses Gemini 2.0 Flash to strictly evaluate image quality (blur/unrelated)
+    WITHOUT attempting to extract text, to prevent hallucinations.
+    Returns: 'clear', 'blurry', or 'unrelated'
+    """
+    try:
+        api_key, base_url, model_list = _load_gemini_vision_config()
+        if not api_key:
+            return 'clear'
+            
+        image_file.seek(0)
+        image_data_uri = _build_receipt_data_uri(image_file)
+        
+        header, encoded = image_data_uri.split(',', 1)
+        mime_type = header.split(';')[0].split(':')[1]
+        
+        payload = {
+            'contents': [
+                {
+                    'role': 'user',
+                    'parts': [
+                        {
+                            'text': (
+                                'Evaluate the image. Answer in JSON with {"status": "result"} where result is ONE of:\n'
+                                '- "unrelated": if the image is NOT a laboratory balance printout (e.g., people, landscapes, normal documents).\n'
+                                '- "blurry": if ANY PART of the text is blurred, out of focus, has glare, or if ANY numbers are illegible. Even if some parts are clear, if OTHER parts are illegible due to blur or glare, you MUST return "blurry". DO NOT guess.\n'
+                                '- "clear": ONLY if ALL numbers and text on the entire printout are perfectly clear and easily readable.'
+                            )
+                        },
+                        {
+                            'inline_data': {
+                                'mime_type': mime_type,
+                                'data': encoded,
+                            }
+                        }
+                    ]
+                }
+            ],
+            'generationConfig': {
+                'temperature': 0,
+                'responseMimeType': 'application/json',
+                'maxOutputTokens': 128,
+            }
+        }
+        
+        import time
+        last_error = None
+        for model in model_list:
+            retries = 3
+            for attempt in range(retries):
+                try:
+                    request = urllib.request.Request(
+                        f'{base_url}/models/{model}:generateContent?key={api_key}',
+                        data=json.dumps(payload).encode('utf-8'),
+                        headers={
+                            'Content-Type': 'application/json',
+                        },
+                        method='POST',
+                    )
+                    
+                    with urllib.request.urlopen(request, timeout=25) as response:
+                        response_body = response.read().decode('utf-8')
+                        
+                    response_json = json.loads(response_body)
+                    response_content = ''
+                    candidates = response_json.get('candidates') or []
+                    if candidates:
+                        parts = (candidates[0].get('content') or {}).get('parts') or []
+                        if parts:
+                            response_content = parts[0].get('text') or ''
+                            
+                    parsed = _extract_json_object(response_content)
+                    if parsed and 'status' in parsed:
+                        status = parsed['status'].lower()
+                        if status in ['unrelated', 'blurry', 'clear']:
+                            logger.info(f"AI Quality filter determined status '{status}' using model {model}")
+                            return status
+                            
+                    break # If JSON parsing fails, breaking to next model
+                    
+                except urllib.error.HTTPError as e:
+                    last_error = e
+                    if e.code == 429:
+                        logger.warning(f"AI Quality filter 429 on model {model}, attempt {attempt+1}/{retries}. Waiting...")
+                        time.sleep(2.0)
+                        continue
+                    else:
+                        logger.warning(f"AI Quality filter HTTP {e.code} on model {model}: {str(e)}")
+                        break # Other HTTP errors -> try next model
+                except Exception as e:
+                    logger.warning(f"AI Quality filter failed on model {model}: {str(e)}")
+                    last_error = e
+                    break # Other errors -> try next model
+                
+        if last_error:
+            logger.error(f"AI Quality filter exhausted all models and retries. Last error: {str(last_error)}")
+            return 'error' # Return error so we don't hallucinate
+            
+        return 'error'
+    except Exception as e:
+        logger.error(f"AI Quality filter critical error: {str(e)}")
+        return 'clear'

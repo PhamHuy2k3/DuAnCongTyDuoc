@@ -277,25 +277,16 @@
                             </div>
                         </div>
 
-                        <!-- Pillow position selection UI -->
+                        <!-- Multi-select instruction and files selector buttons -->
                         <div class="pillow-position-selector" style="background: rgba(0,0,0,0.15); border: 1px solid var(--surface-border); border-radius: 8px; padding: 14px 16px; margin-bottom: 16px;">
-                            <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-primary); margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px; color: var(--accent);"><path d="M4 14h6v6H4zm10 0h6v6h-6zM4 4h6v6H4zm10 0h6v6h-6z"/></svg>
-                                Vị trí gối đầu ảnh (chọn loại ảnh bạn sẽ tải lên):
+                            <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-primary); margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px; color: var(--accent);"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                                Hướng dẫn vận hành gối đầu dữ liệu:
                             </div>
-                            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                                <label class="pillow-checkbox-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 8px 12px; background: rgba(255,255,255,0.03); border: 1px solid var(--surface-border); border-radius: 6px; transition: var(--transition-fast);" id="label-pillow-auto">
-                                    <input type="radio" name="pillow_position" value="auto" checked style="accent-color: var(--accent);">
-                                    <span style="font-size: 0.76rem; color: var(--text-secondary);">Tự động phát hiện (Khuyên dùng)</span>
-                                </label>
-                                <label class="pillow-checkbox-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 8px 12px; background: rgba(255,255,255,0.03); border: 1px solid var(--surface-border); border-radius: 6px; transition: var(--transition-fast);" id="label-pillow-top">
-                                    <input type="radio" name="pillow_position" value="top" style="accent-color: var(--accent);">
-                                    <span style="font-size: 0.76rem; color: var(--text-secondary);">Gối trên (khởi đầu từ viên 1)</span>
-                                </label>
-                                <label class="pillow-checkbox-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 8px 12px; background: rgba(255,255,255,0.03); border: 1px solid var(--surface-border); border-radius: 6px; transition: var(--transition-fast);" id="label-pillow-bottom">
-                                    <input type="radio" name="pillow_position" value="bottom" style="accent-color: var(--accent);">
-                                    <span style="font-size: 0.76rem; color: var(--text-secondary);">Gối dưới (khởi đầu từ viên 11)</span>
-                                </label>
+                            <div style="font-size: 0.74rem; color: var(--text-muted); line-height: 1.5; display: flex; flex-direction: column; gap: 6px;">
+                                <p style="margin: 0;">1. Nhấn nút <strong>"Chọn tệp từ máy tính"</strong> bên dưới hoặc kéo thả nhiều ảnh cùng lúc.</p>
+                                <p style="margin: 0;">2. Bạn có thể chọn <strong>tất cả các ảnh của cuộn phiếu cân</strong> để AI ghép nối tự động.</p>
+                                <p style="margin: 0;">3. Cấu hình chế độ ghép đè và số lượng viên đích ở cột bên phải trước khi xuất COA.</p>
                             </div>
                         </div>
 
@@ -677,11 +668,11 @@
                 <div id="panel-photo-form" class="hidden">
                     <div class="card glass-card form-destination-card" id="uniformity-card-glow">
                         <div class="card-header-accent form-header-accent">
-                            <h4>2. Kiểm nghiệm Độ đồng đều khối lượng Dược điển (20 viên)</h4>
+                            <h4 id="uniformity-header-title">2. Kiểm nghiệm Độ đồng đều khối lượng Dược điển (20 viên)</h4>
                             <span class="status-badge" id="photo-status-badge">Đang chờ quét...</span>
                         </div>
                         
-                        <!-- Premium Scan Status Dashboard & Guide -->
+                        <!-- Premium Scan Status Dashboard & Config & Guide -->
                         <div class="ocr-status-dashboard" style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--surface-border); border-radius: 8px; padding: 14px; margin: 16px 0 0 0;">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                                 <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
@@ -692,8 +683,70 @@
                             </div>
                             
                             <!-- Progress visualization grid - dynamic unlimited -->
-                            <div id="pill-progress-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(28px, 1fr)); gap: 6px; margin-bottom: 10px;">
+                            <div id="pill-progress-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(28px, 1fr)); gap: 6px; margin-bottom: 12px;">
                                 <!-- Will be rendered dynamically via JS - no 20 limit -->
+                            </div>
+
+                            <!-- Stitching and target pills configuration controls -->
+                            <div style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 10px; margin-top: 10px; display: flex; flex-direction: column; gap: 10px;">
+                                <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+                                    <label style="font-size: 0.78rem; font-weight: 700; color: var(--text-secondary); display: flex; align-items: center; gap: 6px;">
+                                        Số mẫu đích (n):
+                                        <input type="number" id="target-pills-count" value="20" min="1" max="100" style="width: 60px; background: rgba(0,0,0,0.3); border: 1px solid var(--surface-border); border-radius: 4px; padding: 4px 6px; color: var(--text-primary); text-align: center; font-size: 0.78rem; font-weight: bold; outline: none;">
+                                    </label>
+                                    <label style="font-size: 0.78rem; font-weight: 700; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; flex: 1; min-width: 180px;">
+                                        Chế độ ghép đè:
+                                        <select id="stitching-mode-select" style="flex: 1; background: rgba(0,0,0,0.3); border: 1px solid var(--surface-border); border-radius: 4px; padding: 4px 6px; color: var(--text-primary); font-size: 0.76rem; outline: none; cursor: pointer;">
+                                            <option value="auto">Tự động phát hiện trùng</option>
+                                            <option value="prepend">Gối trên (Ghép lên đầu)</option>
+                                            <option value="append">Gối dưới (Ghép vào đuôi)</option>
+                                        </select>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Collapsible metadata input card -->
+                            <div style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px; margin-top: 8px;">
+                                <details style="outline: none; cursor: pointer;" id="metadata-details">
+                                    <summary style="font-size: 0.78rem; font-weight: 700; color: var(--text-primary); display: flex; justify-content: space-between; align-items: center; list-style: none;">
+                                        <span>📝 Nhập thông tin phiếu kiểm nghiệm (COA)</span>
+                                        <span style="font-size: 0.7rem; color: var(--accent); font-weight: 700;">Xem chi tiết ▾</span>
+                                    </summary>
+                                    <div style="padding-top: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; cursor: default;" onclick="event.stopPropagation();">
+                                        <div style="display: flex; flex-direction: column; gap: 2px;">
+                                            <label style="font-size: 0.68rem; color: var(--text-muted); font-weight: bold;">Tên thuốc:</label>
+                                            <input type="text" id="drug-info-name" value="ZANDYRINE 10 MG" style="background: rgba(255,255,255,0.02); border: 1px solid var(--surface-border); border-radius: 4px; padding: 4px 8px; color: var(--text-primary); font-size: 0.74rem; outline: none;">
+                                        </div>
+                                        <div style="display: flex; flex-direction: column; gap: 2px;">
+                                            <label style="font-size: 0.68rem; color: var(--text-muted); font-weight: bold;">Hoạt chất:</label>
+                                            <input type="text" id="drug-info-generic" value="DAPAGLIFLOZIN 10 MG" style="background: rgba(255,255,255,0.02); border: 1px solid var(--surface-border); border-radius: 4px; padding: 4px 8px; color: var(--text-primary); font-size: 0.74rem; outline: none;">
+                                        </div>
+                                        <div style="display: flex; flex-direction: column; gap: 2px;">
+                                            <label style="font-size: 0.68rem; color: var(--text-muted); font-weight: bold;">Số lô sản xuất:</label>
+                                            <input type="text" id="drug-info-lot" value="1226003" style="background: rgba(255,255,255,0.02); border: 1px solid var(--surface-border); border-radius: 4px; padding: 4px 8px; color: var(--text-primary); font-size: 0.74rem; outline: none;">
+                                        </div>
+                                        <div style="display: flex; flex-direction: column; gap: 2px;">
+                                            <label style="font-size: 0.68rem; color: var(--text-muted); font-weight: bold;">Số tiêu chuẩn:</label>
+                                            <input type="text" id="drug-info-std" value="QCFPAN122IT" style="background: rgba(255,255,255,0.02); border: 1px solid var(--surface-border); border-radius: 4px; padding: 4px 8px; color: var(--text-primary); font-size: 0.74rem; outline: none;">
+                                        </div>
+                                        <div style="display: flex; flex-direction: column; gap: 2px;">
+                                            <label style="font-size: 0.68rem; color: var(--text-muted); font-weight: bold;">Số phân tích:</label>
+                                            <input type="text" id="drug-info-analysis" value="QC-PV-26-0068" style="background: rgba(255,255,255,0.02); border: 1px solid var(--surface-border); border-radius: 4px; padding: 4px 8px; color: var(--text-primary); font-size: 0.74rem; outline: none;">
+                                        </div>
+                                        <div style="display: flex; flex-direction: column; gap: 2px;">
+                                            <label style="font-size: 0.68rem; color: var(--text-muted); font-weight: bold;">Số phiếu báo cáo:</label>
+                                            <input type="text" id="drug-info-report" value="QC-FP-26-0068" style="background: rgba(255,255,255,0.02); border: 1px solid var(--surface-border); border-radius: 4px; padding: 4px 8px; color: var(--text-primary); font-size: 0.74rem; outline: none;">
+                                        </div>
+                                        <div style="display: flex; flex-direction: column; gap: 2px;">
+                                            <label style="font-size: 0.68rem; color: var(--text-muted); font-weight: bold;">Giai đoạn:</label>
+                                            <input type="text" id="drug-info-stage" value="BAO PHIM" style="background: rgba(255,255,255,0.02); border: 1px solid var(--surface-border); border-radius: 4px; padding: 4px 8px; color: var(--text-primary); font-size: 0.74rem; outline: none;">
+                                        </div>
+                                        <div style="display: flex; flex-direction: column; gap: 2px;">
+                                            <label style="font-size: 0.68rem; color: var(--text-muted); font-weight: bold;">Lần ban hành:</label>
+                                            <input type="text" id="drug-info-issue" value="01" style="background: rgba(255,255,255,0.02); border: 1px solid var(--surface-border); border-radius: 4px; padding: 4px 8px; color: var(--text-primary); font-size: 0.74rem; outline: none;">
+                                        </div>
+                                    </div>
+                                </details>
                             </div>
 
                             <div class="collapsible-guide-card" style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px; margin-top: 8px;">
@@ -704,7 +757,7 @@
                                     </summary>
                                     <div style="font-size: 0.72rem; color: var(--text-muted); line-height: 1.45; padding-top: 8px; display: flex; flex-direction: column; gap: 6px; pointer-events: none;">
                                         <p style="margin: 0;">• <strong>Chọn nhiều ảnh:</strong> Kéo & thả hoặc chọn nhiều ảnh cùng lúc - hệ thống tự động ghép nối.</p>
-                                        <p style="margin: 0;">• <strong>Vị trí gối đầu:</strong> Chọn "Tự động phát hiện" hoặc "Gối trên/Gối dưới" để hệ thống nhận diện đúng vị trí.</p>
+                                        <p style="margin: 0;">• <strong>Chế độ ghép đè:</strong> Chọn "Tự động phát hiện" hoặc "Gối trên/Gối dưới" để hệ thống nhận diện đúng vị trí.</p>
                                         <p style="margin: 0;">• <strong>Không giới hạn số lượng:</strong> Quét bao nhiêu ảnh cũng được - hệ thống tự động ghép và sắp xếp.</p>
                                         <p style="margin: 0;">• <strong>Sửa tay trực tiếp:</strong> Nhấp vào bất kỳ ô nào trong bảng để tự sửa nhanh nếu AI nhận diện nhầm.</p>
                                     </div>
@@ -788,6 +841,26 @@
         <p>Thông tin dược phẩm đã được trích xuất từ tài liệu Word và lưu trữ thành công vào cơ sở dữ liệu y tế chuẩn cấu trúc HTML/JSON.</p>
         <div class="modal-actions">
             <button class="btn btn-primary" id="btn-modal-close">Hoàn Thành & Đóng</button>
+        </div>
+    </div>
+</div>
+
+<!-- Blurry Warning Modal -->
+<div class="modal-overlay hidden" id="blurry-modal" style="background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(8px); z-index: 1000;">
+    <div class="modal-card" style="border: 2px solid var(--danger); box-shadow: 0 0 20px rgba(244, 63, 94, 0.4); max-width: 450px;">
+        <div class="modal-success-icon" style="background: rgba(244, 63, 94, 0.1); border-color: var(--danger); color: var(--danger);">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="width: 32px; height: 32px;">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+        </div>
+        <h3 style="color: var(--text-primary); font-family: var(--font-heading); margin-bottom: 10px;">Cảnh Báo: Ảnh Không Đạt Yêu Cầu!</h3>
+        <p id="blurry-modal-text" style="color: var(--text-muted); font-size: 0.9rem; line-height: 1.5; margin-bottom: 20px;">
+            Hệ thống phát hiện ảnh bị mờ hoặc không đủ độ nét ở một số vùng (được khoanh đỏ trên ảnh). Vui lòng chụp hoặc tải ảnh rõ nét hơn.
+        </p>
+        <div class="modal-actions" style="display: flex; gap: 10px; justify-content: center;">
+            <button class="btn btn-primary" id="btn-blurry-modal-close" style="background: var(--danger); border-color: var(--danger);">Tôi đã hiểu</button>
         </div>
     </div>
 </div>

@@ -462,6 +462,83 @@ document.addEventListener('DOMContentLoaded', () => {
         return (str || '').toString().replace(/\s+/g, '').replace(/[gG]$/, '').trim();
     }
 
+    function mergeAdjacentComplements(records) {
+        if (!records || records.length < 2) return records;
+        const result = [];
+        for (let i = 0; i < records.length; i++) {
+            const cur = records[i];
+            if (i < records.length - 1) {
+                const next = records[i+1];
+                
+                const w1 = cleanVal(cur.weight);
+                const dt1 = cleanVal(cur.datetime);
+                const w2 = cleanVal(next.weight);
+                const dt2 = cleanVal(next.datetime);
+                
+                const hasWeight1 = w1 && w1 !== '-';
+                const hasDatetime1 = dt1 && dt1 !== '-';
+                const hasWeight2 = w2 && w2 !== '-';
+                const hasDatetime2 = dt2 && dt2 !== '-';
+                
+                const case1 = hasWeight1 && !hasDatetime1 && !hasWeight2 && hasDatetime2;
+                const case2 = !hasWeight1 && hasDatetime1 && hasWeight2 && !hasDatetime2;
+                
+                if (case1 || case2) {
+                    result.push({
+                        weight: hasWeight1 ? cur.weight : next.weight,
+                        datetime: hasDatetime1 ? cur.datetime : next.datetime,
+                        balance_type: (cur.balance_type && cur.balance_type !== '-') ? cur.balance_type : (next.balance_type || '-'),
+                        snr: (cur.snr && cur.snr !== '-') ? cur.snr : (next.snr || '-')
+                    });
+                    i++; // skip next
+                    continue;
+                }
+            }
+            result.push(cur);
+        }
+        return result;
+    }
+
+    function highlightBlurredRegions(regions) {
+        const container = document.getElementById('real-image-preview-container');
+        if (!container) return;
+        
+        const oldOverlays = container.querySelectorAll('.blur-overlay');
+        oldOverlays.forEach(el => el.remove());
+        
+        if (!regions || regions.length === 0) return;
+        
+        regions.forEach(reg => {
+            const overlay = document.createElement('div');
+            overlay.className = 'blur-overlay';
+            overlay.style.position = 'absolute';
+            overlay.style.left = reg.x + '%';
+            overlay.style.top = reg.y + '%';
+            overlay.style.width = reg.w + '%';
+            overlay.style.height = reg.h + '%';
+            overlay.style.border = '2px dashed var(--danger)';
+            overlay.style.background = 'rgba(244, 63, 94, 0.15)';
+            overlay.style.boxShadow = '0 0 8px rgba(244, 63, 94, 0.3)';
+            overlay.style.zIndex = '10';
+            overlay.style.pointerEvents = 'none';
+            
+            const label = document.createElement('span');
+            label.textContent = 'Mờ';
+            label.style.position = 'absolute';
+            label.style.top = '2px';
+            label.style.left = '2px';
+            label.style.background = 'var(--danger)';
+            label.style.color = '#fff';
+            label.style.fontSize = '8px';
+            label.style.fontWeight = 'bold';
+            label.style.padding = '1px 3px';
+            label.style.borderRadius = '2px';
+            overlay.appendChild(label);
+            
+            container.appendChild(overlay);
+        });
+    }
+
     function recordsMatch(rec1, rec2) {
         if (!rec1 || !rec2) return false;
         const w1 = cleanVal(rec1.weight);
@@ -477,7 +554,18 @@ document.addEventListener('DOMContentLoaded', () => {
         const hasSharedWeight = w1 && w2 && w1 !== '-' && w2 !== '-';
         const hasSharedDatetime = dt1 && dt2 && dt1 !== '-' && dt2 !== '-';
         
-        return hasSharedWeight || hasSharedDatetime;
+        if (hasSharedWeight || hasSharedDatetime) return true;
+
+        // Complement case: one has weight but no datetime, the other has datetime but no weight.
+        const hasWeight1 = w1 && w1 !== '-';
+        const hasDatetime1 = dt1 && dt1 !== '-';
+        const hasWeight2 = w2 && w2 !== '-';
+        const hasDatetime2 = dt2 && dt2 !== '-';
+
+        const isComplement = (hasWeight1 && !hasDatetime1 && !hasWeight2 && hasDatetime2) ||
+                             (!hasWeight1 && hasDatetime1 && hasWeight2 && !hasDatetime2);
+        
+        return isComplement;
     }
 
     function findOverlap(A, B) {
@@ -580,34 +668,44 @@ document.addEventListener('DOMContentLoaded', () => {
             return A;
         }
 
-        const alignment = findOverlap(A, B);
-        
-        if (alignment.offset !== null && alignment.matches > 0) {
-            addLog(`Phát hiện vùng gối đầu (Khớp ${alignment.matches} bản ghi trùng). Đang ghép nối...`, 'success');
-            const merged = mergeAligned(A, B, alignment.offset);
-            merged.forEach((r, idx) => {
-                r.id = idx + 1;
-            });
-            return merged;
-        }
-
-        const timeA = getEarliestTime(A);
-        const timeB = getEarliestTime(B);
+        const modeEl = document.getElementById('stitching-mode-select');
+        const mode = modeEl ? modeEl.value : 'auto';
 
         let merged = [];
-        if (timeA !== null && timeB !== null) {
-            if (timeB < timeA) {
-                addLog(`Không tìm thấy vùng trùng lặp. Tự động sắp xếp: Dữ liệu mới in trước dữ liệu cũ.`, 'system');
-                merged = [...B, ...A];
-            } else {
-                addLog(`Không tìm thấy vùng trùng lặp. Tự động sắp xếp: Dữ liệu mới in sau dữ liệu cũ.`, 'system');
-                merged = [...A, ...B];
-            }
-        } else {
-            addLog(`Không thể xác định thời gian in. Tự động nối tiếp dữ liệu mới vào cuối bảng.`, 'system');
+
+        if (mode === 'prepend') {
+            addLog(`Chế độ thủ công: Ghép nối đè gối TRÊN (Đặt dữ liệu mới lên đầu).`, 'success');
+            merged = [...B, ...A];
+        } else if (mode === 'append') {
+            addLog(`Chế độ thủ công: Ghép nối đè gối DƯỚI (Đặt dữ liệu mới xuống đuôi).`, 'success');
             merged = [...A, ...B];
+        } else {
+            // Auto mode
+            const alignment = findOverlap(A, B);
+            
+            if (alignment.offset !== null && alignment.matches > 0) {
+                addLog(`Phát hiện vùng gối đầu (Khớp ${alignment.matches} bản ghi trùng). Đang ghép nối...`, 'success');
+                merged = mergeAligned(A, B, alignment.offset);
+            } else {
+                const timeA = getEarliestTime(A);
+                const timeB = getEarliestTime(B);
+
+                if (timeA !== null && timeB !== null) {
+                    if (timeB < timeA) {
+                        addLog(`Không tìm thấy vùng trùng lặp. Tự động sắp xếp: Dữ liệu mới in trước dữ liệu cũ (Dựa trên mốc thời gian).`, 'system');
+                        merged = [...B, ...A];
+                    } else {
+                        addLog(`Không tìm thấy vùng trùng lặp. Tự động sắp xếp: Dữ liệu mới in sau dữ liệu cũ (Dựa trên mốc thời gian).`, 'system');
+                        merged = [...A, ...B];
+                    }
+                } else {
+                    addLog(`Không thể xác định thời gian in. Tự động nối tiếp dữ liệu mới vào cuối bảng.`, 'system');
+                    merged = [...A, ...B];
+                }
+            }
         }
 
+        merged = mergeAdjacentComplements(merged);
         merged.forEach((r, idx) => {
             r.id = idx + 1;
         });
@@ -1034,6 +1132,7 @@ document.addEventListener('DOMContentLoaded', () => {
         selectedFile = null;
         ocrExtractedRecords = [];
         fileQueue = [];
+        highlightBlurredRegions([]);
         updateQueueUI();
         renderOcrTable(ocrExtractedRecords);
         filePhotoLoadedView.classList.add('hidden');
@@ -1409,7 +1508,41 @@ document.addEventListener('DOMContentLoaded', () => {
         btnFormClear.removeAttribute('disabled');
         btnFormSubmit.removeAttribute('disabled');
 
-        addLog(`🎉 <strong>Autofill Process Completed!</strong> 10 fields synchronized.`, 'success');
+        // Sync values to Tab 2 COA metadata form
+        const drugNameVal = document.getElementById('trade_name')?.value || '';
+        const genericVal = document.getElementById('active_ingredient')?.value || '';
+        const strengthVal = document.getElementById('strength')?.value || '';
+        const lotVal = document.getElementById('batch_number')?.value || '';
+        const regVal = document.getElementById('registration_number')?.value || '';
+
+        const targetNameInput = document.getElementById('drug-info-name');
+        const targetGenericInput = document.getElementById('drug-info-generic');
+        const targetLotInput = document.getElementById('drug-info-lot');
+        const targetAnalysisInput = document.getElementById('drug-info-analysis');
+        const targetReportInput = document.getElementById('drug-info-report');
+
+        if (targetNameInput) {
+            targetNameInput.value = drugNameVal;
+            targetNameInput.classList.add('filled-highlight');
+        }
+        if (targetGenericInput) {
+            targetGenericInput.value = genericVal + (strengthVal ? ' ' + strengthVal : '');
+            targetGenericInput.classList.add('filled-highlight');
+        }
+        if (targetLotInput) {
+            targetLotInput.value = lotVal;
+            targetLotInput.classList.add('filled-highlight');
+        }
+        if (targetAnalysisInput) {
+            targetAnalysisInput.value = regVal;
+            targetAnalysisInput.classList.add('filled-highlight');
+        }
+        if (targetReportInput) {
+            targetReportInput.value = regVal;
+            targetReportInput.classList.add('filled-highlight');
+        }
+
+        addLog(`🎉 <strong>Autofill Process Completed!</strong> 10 fields synchronized to COA metadata.`, 'success');
         addLog(`Data verified by client schema. Ready to write to DB.`, 'success');
     }
 
@@ -1483,6 +1616,7 @@ document.addEventListener('DOMContentLoaded', () => {
         btnPhotoClear.addEventListener('click', () => {
             if (isProcessing) return;
             ocrExtractedRecords = [];
+            highlightBlurredRegions([]);
             renderOcrTable(ocrExtractedRecords);
             resetPhotoFormInputs();
             updateUniformityStatsAndPills();
@@ -1491,36 +1625,106 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Sync button redirecting to digitized Certificate of Analysis (form1.html)
-    if (btnSyncCoa) {
-        btnSyncCoa.addEventListener('click', () => {
-            if (isProcessing) return;
-            
-            // Save calculated values to localStorage to dynamically fill form1.html
-            localStorage.setItem('is_scanned_photo', 'true');
-            localStorage.setItem('scan_trade_name', 'ZANDYRINE 10 MG');
-            localStorage.setItem('scan_batch_number', '1226003');
-            localStorage.setItem('scan_mfg_date', '01.04.26');
-            localStorage.setItem('scan_exp_date', '31.03.29');
-            localStorage.setItem('scan_dosage_form', 'VIÊN NÉN BAO PHIM');
-            localStorage.setItem('scan_packing', 'Hộp 3 vỉ x 10 viên');
-            localStorage.setItem('scan_product_code', 'AN1221T');
-            localStorage.setItem('scan_std_number', 'QCFPAN1221T/ Lần ban hành: 01');
-            localStorage.setItem('scan_report_number', 'QC-FP-26-0063');
-            localStorage.setItem('scan_avg_weight', '0.256g');
-            localStorage.setItem('scan_rsd', '0.82%');
+    // ── CSRF token helper ─────────────────────────────────────────────────
+    function getCsrfToken() {
+        const name = 'csrftoken';
+        const cookies = document.cookie.split(';');
+        for (let c of cookies) {
+            const [k, v] = c.trim().split('=');
+            if (k === name) return decodeURIComponent(v);
+        }
+        // Fallback: look for the hidden input in the page
+        const el = document.querySelector('[name=csrfmiddlewaretoken]');
+        return el ? el.value : '';
+    }
 
-            addLog('Synchronizing weights to Certificate of Analysis...', 'process');
-            
-            setTimeout(() => {
-                window.location.href = '/coa/';
-            }, 800);
+    if (btnSyncCoa) {
+        btnSyncCoa.addEventListener('click', async () => {
+            if (isProcessing) return;
+
+            if (!ocrExtractedRecords || ocrExtractedRecords.length === 0) {
+                addLog('⚠️ Chưa có dữ liệu cân. Vui lòng quét phiếu cân trước khi tạo COA.', 'error');
+                return;
+            }
+
+            addLog(`📋 Đang tạo Phiếu Báo Cáo COA từ ${ocrExtractedRecords.length} bản ghi...`, 'process');
+            btnSyncCoa.setAttribute('disabled', 'true');
+            btnSyncCoa.textContent = 'Đang tạo COA...';
+
+            try {
+                const targetCountVal = parseInt(document.getElementById('target-pills-count')?.value || 20);
+                const recordsToSend = ocrExtractedRecords.slice(0, targetCountVal);
+
+                const response = await fetch('/user/scan/coa-api/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken(),
+                    },
+                    body: JSON.stringify({
+                        records: recordsToSend,
+                        drug_info: {
+                            drug_name: document.getElementById('drug-info-name')?.value || 'ZANDYRINE 10 MG',
+                            generic_name: document.getElementById('drug-info-generic')?.value || 'DAPAGLIFLOZIN 10 MG',
+                            lot_number: document.getElementById('drug-info-lot')?.value || '1226003',
+                            std_number: document.getElementById('drug-info-std')?.value || 'QCFPAN122IT',
+                            analysis_number: document.getElementById('drug-info-analysis')?.value || 'QC-PV-26-0068',
+                            report_number: document.getElementById('drug-info-report')?.value || 'QC-FP-26-0068',
+                            stage: document.getElementById('drug-info-stage')?.value || 'BAO PHIM',
+                            issue: document.getElementById('drug-info-issue')?.value || '01',
+                        },
+                    }),
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    const stats = data.statistics || {};
+                    addLog(
+                        `✅ COA tạo thành công! ${stats.n || ocrExtractedRecords.length} viên | ` +
+                        `Mean: ${stats.mean_mg || '—'} mg | ` +
+                        `Ngoài ±5%: ${stats.out_5 ?? '—'} viên | ` +
+                        `Kết luận: ${stats.pass_fail || '—'}`,
+                        'success'
+                    );
+
+                    // Open in new window for printing
+                    const win = window.open('', '_blank', 'width=900,height=800,scrollbars=yes');
+                    if (win) {
+                        win.document.open();
+                        win.document.write(data.html);
+                        win.document.close();
+                    } else {
+                        addLog('⚠️ Trình duyệt chặn cửa sổ popup. Hãy cho phép popup và thử lại.', 'error');
+                    }
+                } else {
+                    addLog(`❌ Lỗi tạo COA: ${data.error}`, 'error');
+                }
+            } catch (err) {
+                addLog(`❌ Lỗi kết nối: ${err.message}`, 'error');
+            } finally {
+                btnSyncCoa.removeAttribute('disabled');
+                const span = btnSyncCoa.querySelector('span');
+                if (span) span.textContent = 'Đồng bộ sang Phiếu COA';
+                else btnSyncCoa.textContent = 'Đồng bộ sang Phiếu COA';
+            }
         });
     }
+
 
     if (btnModalClose) {
         btnModalClose.addEventListener('click', () => {
             successModal.classList.add('hidden');
             resetToInitialState();
+        });
+    }
+    
+    const btnBlurryClose = document.getElementById('btn-blurry-modal-close');
+    const blurryModal = document.getElementById('blurry-modal');
+    if (btnBlurryClose && blurryModal) {
+        btnBlurryClose.addEventListener('click', () => {
+            blurryModal.style.setProperty('display', 'none', 'important');
+            blurryModal.classList.add('hidden');
         });
     }
 
@@ -1538,9 +1742,10 @@ document.addEventListener('DOMContentLoaded', () => {
             return (str || '').toString().replace(/\s+/g, '').replace(/[gG]$/, '').trim();
         }
 
+        const cleanIncoming = mergeAdjacentComplements(incoming);
         const merged = [...existing];
 
-        incoming.forEach(newRec => {
+        cleanIncoming.forEach(newRec => {
             let isDuplicate = false;
             
             for (let i = 0; i < merged.length; i++) {
@@ -1598,11 +1803,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         // Re-index
-        merged.forEach((r, idx) => {
+        const finalMerged = mergeAdjacentComplements(merged);
+        finalMerged.forEach((r, idx) => {
             r.id = idx + 1;
         });
 
-        return merged;
+        return finalMerged;
     }
 
     async function runGeminiOCR(file) {
@@ -1628,8 +1834,11 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             if (!response.ok) {
-                const errData = await response.json();
-                throw new Error(errData.error || `HTTP ${response.status}`);
+                const errData = await response.json().catch(() => ({}));
+                const ocrErr = new Error(errData.error || `HTTP ${response.status}`);
+                ocrErr.code = errData.error_code;
+                ocrErr.regions = errData.blurred_regions;
+                throw ocrErr;
             }
 
             if (ocrProgressFill) ocrProgressFill.style.width = '60%';
@@ -1729,6 +1938,33 @@ document.addEventListener('DOMContentLoaded', () => {
             addLog(`Lỗi OCR: ${err.message}`, 'error');
             console.error('OCR Error:', err);
             if (ocrProgressBox) ocrProgressBox.classList.add('hidden');
+            
+            if (err.code === 'blurry_image') {
+                highlightBlurredRegions(err.regions || []);
+                const blurryModal = document.getElementById('blurry-modal');
+                const blurryModalText = document.getElementById('blurry-modal-text');
+                if (blurryModal && blurryModalText) {
+                    blurryModalText.textContent = err.message;
+                    blurryModal.style.setProperty('display', 'flex', 'important');
+                    blurryModal.classList.remove('hidden');
+                } else {
+                    alert(`⚠️ Cảnh báo: ${err.message}`);
+                }
+            } else if (err.code === 'unrelated_image') {
+                highlightBlurredRegions([]);
+                const blurryModal = document.getElementById('blurry-modal');
+                const blurryModalText = document.getElementById('blurry-modal-text');
+                if (blurryModal && blurryModalText) {
+                    blurryModalText.textContent = err.message;
+                    blurryModal.style.setProperty('display', 'flex', 'important');
+                    blurryModal.classList.remove('hidden');
+                } else {
+                    alert(`⚠️ Cảnh báo: ${err.message}`);
+                }
+            } else {
+                highlightBlurredRegions([]);
+                alert(`⚠️ Lỗi: ${err.message}`);
+            }
             resetUIStatePhoto();
         }
     }
@@ -1758,9 +1994,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
         grid.innerHTML = '';
         let completedCount = 0;
-        const totalCount = ocrExtractedRecords.length;
+        
+        const targetPillsCountInput = document.getElementById('target-pills-count');
+        const targetCount = targetPillsCountInput ? parseInt(targetPillsCountInput.value || 20) : 20;
+        const totalCount = Math.max(ocrExtractedRecords.length, targetCount);
 
-        // Render pills for actual records count (not limited to 20)
+        // Dynamically update the header title with the actual count of pills
+        const headerTitle = document.getElementById('uniformity-header-title');
+        if (headerTitle) {
+            headerTitle.textContent = `2. Kiểm nghiệm Độ đồng đều khối lượng Dược điển (${totalCount} viên)`;
+        }
+
         for (let i = 0; i < totalCount; i++) {
             const rec = ocrExtractedRecords[i] || {};
             const hasW = rec.weight && rec.weight !== '-' && rec.weight !== '';
@@ -1779,9 +2023,35 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const pill = document.createElement('div');
-            pill.style.cssText = `height: 24px; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.72rem; font-weight: 700; cursor: help; transition: var(--transition-fast); ${colorClass}`;
+            pill.style.cssText = `height: 24px; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.72rem; font-weight: 700; cursor: pointer; transition: var(--transition-fast); ${colorClass}`;
             pill.title = title;
             pill.textContent = i + 1;
+            
+            // Go to page & focus on click
+            const pillIndex = i;
+            pill.addEventListener('click', () => {
+                const recordId = pillIndex + 1;
+                const pageNum = Math.floor(pillIndex / recordsPerPage) + 1;
+                currentTablePage = pageNum;
+                renderOcrTable(ocrExtractedRecords);
+                
+                setTimeout(() => {
+                    const targetCell = document.querySelector(`.editable-cell[data-id="${recordId}"][data-field="weight"]`);
+                    if (targetCell) {
+                        targetCell.focus();
+                        const tr = targetCell.closest('tr');
+                        if (tr) {
+                            tr.style.transition = 'background-color 0.5s ease';
+                            tr.style.backgroundColor = 'rgba(14, 165, 233, 0.2)';
+                            setTimeout(() => {
+                                tr.style.backgroundColor = '';
+                            }, 1500);
+                            tr.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                    }
+                }, 100);
+            });
+            
             grid.appendChild(pill);
         }
 
@@ -1883,6 +2153,29 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Add change listener to save edited value
                 const cells = tr.querySelectorAll('.editable-cell');
                 cells.forEach(cell => {
+                    // Strict keypress validation for weight input
+                    cell.addEventListener('keypress', (e) => {
+                        const field = e.target.getAttribute('data-field');
+                        if (field === 'weight') {
+                            const allowed = /[0-9.,()]/;
+                            if (!allowed.test(e.key) && e.key !== 'Enter') {
+                                e.preventDefault();
+                            }
+                        }
+                    });
+
+                    // Strict paste validation for weight input
+                    cell.addEventListener('paste', (e) => {
+                        const field = e.target.getAttribute('data-field');
+                        if (field === 'weight') {
+                            e.preventDefault();
+                            const text = (e.originalEvent || e).clipboardData.getData('text/plain');
+                            if (/^[0-9.,()]+$/.test(text)) {
+                                document.execCommand('insertText', false, text);
+                            }
+                        }
+                    });
+
                     cell.addEventListener('blur', (e) => {
                         const id = parseInt(e.target.getAttribute('data-id'));
                         const field = e.target.getAttribute('data-field');
@@ -1892,6 +2185,20 @@ document.addEventListener('DOMContentLoaded', () => {
                         // Find and update in global ocrExtractedRecords
                         const recordIndex = ocrExtractedRecords.findIndex(rec => rec.id === id);
                         if (recordIndex !== -1) {
+                            const origRecord = ocrExtractedRecords[recordIndex];
+                            
+                            // Validate weight formatting on blur
+                            if (field === 'weight') {
+                                if (newVal && newVal !== '-' && newVal !== '—') {
+                                    const isValid = /^\d+([.,]\d+)?(\(\d+\))?$/.test(newVal);
+                                    if (!isValid) {
+                                        alert(`⚠️ Lỗi: Định dạng khối lượng không hợp lệ!\n\nVui lòng nhập số thập phân (ví dụ: 0.256) hoặc số phụ trong ngoặc (ví dụ: 0.255(3)).`);
+                                        e.target.textContent = origRecord.weight || '-';
+                                        return;
+                                    }
+                                }
+                            }
+
                             ocrExtractedRecords[recordIndex][field] = newVal;
                             
                             // Re-sync this value to the matching UI input w1-w20 if field is 'weight'
@@ -1958,6 +2265,14 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Target pills count change
+    const targetPillsCountInput = document.getElementById('target-pills-count');
+    if (targetPillsCountInput) {
+        targetPillsCountInput.addEventListener('input', () => {
+            updateUniformityStatsAndPills();
+        });
+    }
+
     // Pagination buttons
     document.addEventListener('click', (e) => {
         if (e.target.id === 'btn-prev-page') {
@@ -1983,10 +2298,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (filterVal === 'valid' && !isRecordValid) return false;
                 if (filterVal === 'invalid' && isRecordValid) return false;
                 if (searchVal && 
-                    !r.weight.toLowerCase().includes(searchVal) && 
-                    !r.snr.toLowerCase().includes(searchVal) && 
-                    !r.datetime.toLowerCase().includes(searchVal) && 
-                    !r.balance_type.toLowerCase().includes(searchVal)) {
+                    !(r.weight || '').toLowerCase().includes(searchVal) && 
+                    !(r.snr || '').toLowerCase().includes(searchVal) && 
+                    !(r.datetime || '').toLowerCase().includes(searchVal) && 
+                    !(r.balance_type || '').toLowerCase().includes(searchVal)) {
                     return false;
                 }
                 return true;
@@ -2155,6 +2470,44 @@ document.addEventListener('DOMContentLoaded', () => {
         requestAnimationFrame(updatePhotoScan);
     }
     
+    // Sync Tab 1 inputs to Tab 2 inputs on change
+    ['trade_name', 'active_ingredient', 'batch_number', 'registration_number'].forEach(id => {
+        const input = document.getElementById(id);
+        if (input) {
+            input.addEventListener('input', () => {
+                const targetId = {
+                    'trade_name': 'drug-info-name',
+                    'active_ingredient': 'drug-info-generic',
+                    'batch_number': 'drug-info-lot',
+                    'registration_number': 'drug-info-report'
+                }[id];
+                const targetEl = document.getElementById(targetId);
+                if (targetEl) {
+                    targetEl.value = input.value;
+                    targetEl.classList.add('filled-highlight');
+                }
+                if (id === 'active_ingredient') {
+                    // Combine with strength if present
+                    const strengthEl = document.getElementById('strength');
+                    const genericEl = document.getElementById('drug-info-generic');
+                    if (genericEl) {
+                        genericEl.value = input.value + (strengthEl && strengthEl.value ? ' ' + strengthEl.value : '');
+                    }
+                }
+            });
+        }
+    });
+    const strengthInput = document.getElementById('strength');
+    if (strengthInput) {
+        strengthInput.addEventListener('input', () => {
+            const activeIng = document.getElementById('active_ingredient')?.value || '';
+            const genericEl = document.getElementById('drug-info-generic');
+            if (genericEl) {
+                genericEl.value = activeIng + (strengthInput.value ? ' ' + strengthInput.value : '');
+            }
+        });
+    }
+
     // Initialize empty progress grid on load
     updateUniformityStatsAndPills();
 });

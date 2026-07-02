@@ -309,10 +309,51 @@ def scan_receipt_api(request):
     uploaded_file = request.FILES['image']
     
     try:
+        from user.services import extract_balance_receipt_records, analyze_image_quality_with_ai
+        
+        # 1. AI Image Quality Filter (Dedicated AI model without text extraction to prevent hallucinations)
         uploaded_file.seek(0)
-        records = extract_balance_receipt_records(uploaded_file)
+        quality_status = analyze_image_quality_with_ai(uploaded_file)
+        
+        if quality_status == 'unrelated':
+            return JsonResponse({
+                'success': False,
+                'error_code': 'unrelated_image',
+                'error': 'Hình ảnh không phù hợp, vui lòng chọn hình ảnh khác'
+            }, status=400)
+        elif quality_status == 'blurry':
+            return JsonResponse({
+                'success': False,
+                'error_code': 'blurry_image',
+                'error': 'Ảnh quá mờ để có thể trích xuất dữ liệu, vui lòng chọn ảnh rõ nét hơn.'
+            }, status=400)
+        elif quality_status == 'error':
+            return JsonResponse({
+                'success': False,
+                'error_code': 'filter_error',
+                'error': 'Hệ thống AI đang quá tải hoặc lỗi kết nối. Vui lòng thử lại sau vài giây.'
+            }, status=400)
+            
+        # 2. Extract records via Gemini Vision API (Since image is clear)
+        uploaded_file.seek(0)
+        result = extract_balance_receipt_records(uploaded_file)
 
-        if not records:
+        # Handle validation error codes returned from Gemini (e.g. unrelated_image)
+        if isinstance(result, dict) and 'error_code' in result:
+            error_code = result['error_code']
+            error_msg = result.get('error', 'Ảnh không hợp lệ.')
+            if error_code in ['unrelated_image', 'invalid_image']:
+                error_msg = 'Hình ảnh không phù hợp, vui lòng chọn hình ảnh khác'
+            elif error_code == 'blurry_image':
+                error_msg = 'Ảnh quá mờ để có thể trích xuất dữ liệu, vui lòng chọn ảnh rõ nét hơn.'
+                
+            return JsonResponse({
+                'success': False,
+                'error_code': error_code,
+                'error': error_msg
+            }, status=400)
+
+        if not result:
             return JsonResponse({
                 'success': False,
                 'error': 'Không tìm thấy dữ liệu cân theo cấu trúc 2 cột trong ảnh. Vui lòng thử ảnh rõ hơn hoặc ảnh chụp trọn phiếu.'
@@ -320,7 +361,7 @@ def scan_receipt_api(request):
         
         return JsonResponse({
             'success': True,
-            'records': records
+            'records': result
         })
         
     except Exception as e:
@@ -332,83 +373,185 @@ def scan_receipt_api(request):
 @login_required(login_url='login')
 def generate_coa_from_scanned_data(request):
     """
-    Generate COA HTML dynamically from scanned weight records.
-    This replaces the hardcoded form1.html approach.
+    Generate COA HTML (Form 3 — Độ đồng đều khối lượng) dynamically from scanned weight records.
+    Parses weight values in "0.256(1)" format, converts g→mg, calculates all pharmacopoeia stats.
     """
     if request.method != 'POST':
         return JsonResponse({'success': False, 'error': 'Chỉ hỗ trợ phương thức POST'}, status=405)
-    
+
     try:
         data = json.loads(request.body)
         records = data.get('records', [])
-        
+        drug_info = data.get('drug_info', {})
+
         if not records:
-            return JsonResponse({
-                'success': False,
-                'error': 'Không có dữ liệu để tạo COA'
-            }, status=400)
-        
-        # Calculate statistics
-        weights = []
-        for record in records:
+            return JsonResponse({'success': False, 'error': 'Không có dữ liệu để tạo COA'}, status=400)
+
+        # ── Parse each record ──────────────────────────────────────────────
+        def parse_weight_to_mg(raw):
+            """
+            Convert weight string to milligrams.
+            Handles:  "0.256(1) g"  →  0.2561 g  →  256.1 mg
+                      "0.256(1)"    →  0.2561 g  →  256.1 mg
+                      "0.256 g"     →  0.256  g  →  256.0 mg
+                      "256"         →  interpreted as mg directly (>=10 means mg)
+            Returns float mg or None.
+            """
+            s = str(raw or '').strip()
+            s = re.sub(r'\s*[gG]\s*$', '', s).strip()
+            if not s or s == '-':
+                return None
+
+            # Format "0.256(1)"  →  base="0.256", extra="1"  →  "0.2561"
+            m = re.match(r'^(\d+[.,]\d+)\((\d+)\)$', s)
+            if m:
+                base = m.group(1).replace(',', '.')
+                extra = m.group(2)
+                try:
+                    val_g = float(base + extra)
+                    return round(val_g * 1000, 4)
+                except ValueError:
+                    pass
+
+            # Plain decimal "0.256" or "256.5"
             try:
-                # Parse weight value like "0.258(1) g"
-                weight_str = str(record.get('weight', '')).replace(' ', '').replace('g', '').replace('G', '')
-                # Extract numeric part before parenthesis
-                match = re.match(r'([\d.,]+)', weight_str)
-                if match:
-                    weight_val = float(match.group(1).replace(',', '.'))
-                    weights.append(weight_val)
-            except (ValueError, AttributeError):
-                continue
-        
-        # Calculate statistics
-        mean_weight = 0.0
-        rsd = 0.0
-        if weights:
-            n = len(weights)
-            mean_weight = sum(weights) / n
-            variance = sum((w - mean_weight) ** 2 for w in weights) / n if n > 1 else 0
-            std_dev = variance ** 0.5
-            rsd = (std_dev / mean_weight * 100) if mean_weight > 0 else 0
-        
-        # Save records to database
-        for idx, record in enumerate(records, start=1):
+                val = float(s.replace(',', '.'))
+                # If value looks like grams (< 10), convert to mg; otherwise assume already mg
+                if val < 10:
+                    return round(val * 1000, 4)
+                return round(val, 4)
+            except ValueError:
+                return None
+
+        weights_mg = []
+        parsed_records = []
+
+        for idx, rec in enumerate(records, start=1):
+            w_mg = parse_weight_to_mg(rec.get('weight', ''))
+            if w_mg is not None:
+                weights_mg.append(w_mg)
+
+            parsed_records.append({
+                'stt': idx,
+                'weight_raw': rec.get('weight', '—'),
+                'weight_mg': round(w_mg, 2) if w_mg is not None else None,
+                'datetime': rec.get('datetime', '—'),
+                'balance_type': rec.get('balance_type', '—'),
+                'snr': rec.get('snr', '—'),
+                'status': 'pending',
+                'status_label': '—',
+            })
+
+        # ── Pharmacopoeia statistics ───────────────────────────────────────
+        stats = {}
+        if weights_mg:
+            n = len(weights_mg)
+            mean_mg = sum(weights_mg) / n
+            lower_5 = mean_mg * 0.95
+            upper_5 = mean_mg * 1.05
+            lower_10 = mean_mg * 0.90
+            upper_10 = mean_mg * 1.10
+
+            out_5 = 0
+            out_10 = 0
+            for r in parsed_records:
+                w = r['weight_mg']
+                if w is None:
+                    r['status'] = 'missing'
+                    r['status_label'] = '—'
+                    continue
+                if w < lower_10 or w > upper_10:
+                    r['status'] = 'out10'
+                    r['status_label'] = '> ±10%'
+                    out_10 += 1
+                    out_5 += 1   # also counts as outside ±5%
+                elif w < lower_5 or w > upper_5:
+                    r['status'] = 'out5'
+                    r['status_label'] = '> ±5%'
+                    out_5 += 1
+                else:
+                    r['status'] = 'ok'
+                    r['status_label'] = 'Đạt'
+
+            # Rule: ≤2 outside ±5%  AND  0 outside ±10%
+            pass_fail = 'Đạt' if (out_5 <= 2 and out_10 == 0) else 'Không đạt'
+
+            # Format stats with comma as decimal separator
+            def fmt_comma(val):
+                if val is None:
+                    return '—'
+                return f"{val:.2f}".replace('.', ',')
+
+            stats_formatted = {
+                'n': n,
+                'mean_mg': fmt_comma(mean_mg),
+                'min_mg': fmt_comma(min(weights_mg)),
+                'max_mg': fmt_comma(max(weights_mg)),
+                'lower_5':  fmt_comma(lower_5),
+                'upper_5':  fmt_comma(upper_5),
+                'lower_10': fmt_comma(lower_10),
+                'upper_10': fmt_comma(upper_10),
+                'out_5': out_5,
+                'out_10': out_10,
+                'pass_fail': pass_fail,
+                'pass_fail_class': 'pass' if pass_fail == 'Đạt' else 'fail',
+            }
+
+        # ── Common metadata (first non-empty value wins) ──────────────────
+        def first_valid(key):
+            for r in records:
+                v = str(r.get(key, '') or '').strip()
+                if v and v != '-' and v != '—':
+                    return v
+            return '—'
+
+        balance_type = first_valid('balance_type')
+        snr = first_valid('snr')
+        raw_date = first_valid('datetime')
+        scan_date = raw_date.split(' ')[0] if ' ' in raw_date else raw_date
+
+        # ── Save records to database ──────────────────────────────────────
+        for r in parsed_records:
             WeightUniformityRecord.objects.create(
                 user=request.user,
-                pill_number=idx,
-                weight=str(record.get('weight', '')),
+                pill_number=r['stt'],
+                weight=str(r['weight_raw']),
                 timestamp=timezone.now(),
-                balance_type=str(record.get('balance_type', '')),
-                snr=str(record.get('snr', ''))
+                balance_type=str(r['balance_type']),
+                snr=str(r['snr']),
             )
-        
-        # Prepare context for template
+
         context = {
-            'records': records,
-            'mean_weight': round(mean_weight, 4),
-            'rsd': round(rsd, 2),
-            'n': len(records),
+            'stats': stats_formatted,
+            'balance_type': balance_type,
+            'snr': snr,
+            'scan_date': scan_date,
+            'drug_info': drug_info,
             'user': request.user,
-            'generated_at': timezone.now().strftime('%d/%m/%Y %H:%M:%S')
+            'generated_at': timezone.now().strftime('%d/%m/%Y %H:%M:%S'),
         }
-        
-        # Generate HTML
+
+        for i in range(1, 21):
+            w_val = '—'
+            if i - 1 < len(parsed_records):
+                r = parsed_records[i - 1]
+                if r['weight_mg'] is not None:
+                    w_val = f"{r['weight_mg']:.2f}".replace('.', ',')
+            context[f'w{i}'] = w_val
+
         from django.template.loader import render_to_string
         html_content = render_to_string('user/dynamic_coa.html', context)
-        
+
         return JsonResponse({
             'success': True,
             'html': html_content,
-            'statistics': {
-                'mean_weight': round(mean_weight, 4),
-                'rsd': round(rsd, 2),
-                'n': len(records)
-            }
+            'statistics': stats,
         })
-        
+
+
     except json.JSONDecodeError:
-        return JsonResponse({'success': False, 'error': 'Dữ liệu không hợp lệ'}, status=400)
+        return JsonResponse({'success': False, 'error': 'Dữ liệu JSON không hợp lệ'}, status=400)
     except Exception as e:
         logger.error(f"Error generating COA: {str(e)}")
         return JsonResponse({'success': False, 'error': f'Lỗi hệ thống: {str(e)}'}, status=500)
+
