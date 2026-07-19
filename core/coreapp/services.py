@@ -10,6 +10,40 @@ User = get_user_model()
 logger = logging.getLogger('coreapp')
 
 
+def get_client_ip(request):
+    """Lấy địa chỉ IP thực của client, hỗ trợ reverse proxy."""
+    x_forwarded = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded:
+        return x_forwarded.split(',')[0].strip()
+    return request.META.get('REMOTE_ADDR')
+
+
+def log_action(request, action, target_type='', target_id=None,
+               target_label='', detail=None):
+    """Ghi nhật ký hệ thống.
+
+    Args:
+        request: HttpRequest (dùng để lấy actor và IP).
+        action: Mã hành động (VD: 'USER_CREATED').
+        target_type: Loại đối tượng bị tác động ('User', 'Medicine'...).
+        target_id: ID của đối tượng.
+        target_label: Tên hiển thị của đối tượng.
+        detail: Dict chứa thông tin chi tiết thay đổi (old/new values).
+    """
+    try:
+        from coreapp.models import SystemLog
+        SystemLog.objects.create(
+            actor=request.user if request.user.is_authenticated else None,
+            action=action,
+            target_type=target_type,
+            target_id=target_id,
+            target_label=target_label,
+            detail=detail or {},
+            ip_address=get_client_ip(request),
+        )
+    except Exception as e:
+        logger.error(f"Lỗi ghi nhật ký hệ thống: {e}")
+
 def generate_secure_password(length=12):
     """Tạo mật khẩu ngẫu nhiên an toàn"""
     alphabet = string.ascii_letters + string.digits + "@#$%"

@@ -172,6 +172,38 @@ document.addEventListener('DOMContentLoaded', function () {
             // Gọi lại hàm xóa cũ của bạn
             openDeleteModal(username);
         }
+        
+        const deleteDocBtn = e.target.closest('.js-delete-doc');
+        if (deleteDocBtn) {
+            const docId = deleteDocBtn.getAttribute('data-doc-id');
+            if (confirm("Bạn có chắc chắn muốn xóa tài liệu này?")) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.innerHTML = `
+                    <input type="hidden" name="csrfmiddlewaretoken" value="${document.getElementById('csrf-token').value}">
+                    <input type="hidden" name="action_type" value="delete_doc">
+                    <input type="hidden" name="target_id" value="${docId}">
+                `;
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
+
+        const deleteMedBtn = e.target.closest('.js-delete-med');
+        if (deleteMedBtn) {
+            const medId = deleteMedBtn.getAttribute('data-med-id');
+            if (confirm("Bạn có chắc chắn muốn xóa dược phẩm này?")) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.innerHTML = `
+                    <input type="hidden" name="csrfmiddlewaretoken" value="${document.getElementById('csrf-token').value}">
+                    <input type="hidden" name="action_type" value="delete_med">
+                    <input type="hidden" name="target_id" value="${medId}">
+                `;
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
     });
 });
 
@@ -197,3 +229,44 @@ window.onclick = function(event) {
     }
 }
 
+// === LOGIC CHI TIẾT NHẬT KÝ HỆ THỐNG ===
+function openLogDetailModal(logId) {
+    const modal = document.getElementById('log-modal');
+    const content = document.getElementById('log-detail-content');
+    if (!modal) return;
+    
+    modal.classList.remove('hidden');
+    content.innerHTML = '<div style="text-align:center; color:#94a3b8;">Đang tải dữ liệu...</div>';
+    
+    fetch(`/admin-panel/logs/detail/${logId}/`)
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                let html = `
+                    <div style="display:grid; grid-template-columns: 100px 1fr; gap: 10px; margin-bottom: 20px;">
+                        <strong style="color:#94a3b8;">Thời gian:</strong> <span>${data.log.timestamp}</span>
+                        <strong style="color:#94a3b8;">Thực hiện bởi:</strong> <span>${data.log.actor}</span>
+                        <strong style="color:#94a3b8;">Hành động:</strong> <span>${data.log.action}</span>
+                        <strong style="color:#94a3b8;">Đối tượng:</strong> <span>${data.log.target_label || '---'}</span>
+                    </div>
+                    <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 6px; font-family: monospace;">
+                `;
+                
+                // Format JSON if exists
+                if (data.log.detail && Object.keys(data.log.detail).length > 0) {
+                    html += `<pre style="margin:0; white-space: pre-wrap; word-break: break-all; color:#a5b4fc;">${JSON.stringify(data.log.detail, null, 2)}</pre>`;
+                } else {
+                    html += '<span style="color:#64748b;">Không có chi tiết JSON</span>';
+                }
+                
+                html += '</div>';
+                content.innerHTML = html;
+            } else {
+                content.innerHTML = '<div style="color:#ef4444;">Lỗi tải dữ liệu.</div>';
+            }
+        })
+        .catch(err => {
+            content.innerHTML = '<div style="color:#ef4444;">Lỗi mạng. Vui lòng thử lại sau.</div>';
+            console.error(err);
+        });
+}

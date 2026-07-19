@@ -838,9 +838,10 @@
             </svg>
         </div>
         <h3>Lưu Dữ Liệu Thành Công!</h3>
-        <p>Thông tin dược phẩm đã được trích xuất từ tài liệu Word và lưu trữ thành công vào cơ sở dữ liệu y tế chuẩn cấu trúc HTML/JSON.</p>
-        <div class="modal-actions">
-            <button class="btn btn-primary" id="btn-modal-close">Hoàn Thành & Đóng</button>
+        <p id="success-modal-msg">Thông tin dược phẩm đã được lưu vào cơ sở dữ liệu thành công.</p>
+        <div class="modal-actions" style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+            <button class="btn btn-secondary" id="btn-modal-close">Đóng</button>
+            <a class="btn btn-primary" href="{% url 'dashboard' %}" id="btn-goto-dashboard">Xem trong Dashboard →</a>
         </div>
     </div>
 </div>
@@ -867,98 +868,121 @@
 {% endblock %}
 
 <script>
-// Global array to store weight records
-let weightRecords = [];
-let isPhotoTabActive = false;
+// ── Helpers ──────────────────────────────────────────────────────────────────
+function getCsrf() {
+    return document.cookie.match('(^|;)\\s*csrftoken\\s*=\\s*([^;]+)')?.pop() || '';
+}
 
-// DOM Elements
-const btnSyncCOA = document.getElementById('btn-sync-coa');
+function showSuccessModal(msg) {
+    document.getElementById('success-modal-msg').textContent = msg;
+    document.getElementById('success-modal').classList.remove('hidden');
+}
+
+document.getElementById('btn-modal-close')?.addEventListener('click', () => {
+    document.getElementById('success-modal').classList.add('hidden');
+});
+
+// ── WORD FLOW: nút "Lưu Vào Cơ Sở Dữ Liệu" ──────────────────────────────────
+// Nút này được enable bởi main.js sau khi quét Word xong (upload_document đã tạo DB rồi)
+// Chúng ta chỉ cần hiện success modal và redirect
+const btnFormSubmit = document.getElementById('btn-form-submit');
+if (btnFormSubmit) {
+    btnFormSubmit.addEventListener('click', function() {
+        // upload_document đã lưu DB rồi khi quét xong
+        // Chỉ cần hiện modal thành công
+        showSuccessModal('Thông tin dược phẩm đã được lưu vào lịch sử. Vào Dashboard để kiểm duyệt.');
+    });
+}
+
+// ── PHOTO FLOW: Đồng bộ sang COA ─────────────────────────────────────────────
 const tableBody = document.getElementById('table-body');
+const btnSyncCOA = document.getElementById('btn-sync-coa');
 
-// Function to collect weight data from the table
 function collectWeightRecords() {
     const records = [];
     const rows = tableBody.querySelectorAll('tr[data-record="true"]');
-    
     rows.forEach(row => {
         const cells = row.querySelectorAll('td');
         if (cells.length >= 5) {
             records.push({
                 pill_number: cells[0].textContent.trim(),
-                weight: cells[1].textContent.trim(),
-                datetime: cells[2].textContent.trim(),
+                weight:       cells[1].textContent.trim(),
+                datetime:     cells[2].textContent.trim(),
                 balance_type: cells[3].textContent.trim(),
-                snr: cells[4].textContent.trim()
+                snr:          cells[4].textContent.trim()
             });
         }
     });
-    
     return records;
 }
 
-// Function to handle COA sync
+function collectDrugInfo() {
+    return {
+        name:     document.getElementById('drug-info-name')?.value     || '',
+        generic:  document.getElementById('drug-info-generic')?.value  || '',
+        lot:      document.getElementById('drug-info-lot')?.value      || '',
+        std:      document.getElementById('drug-info-std')?.value      || '',
+        analysis: document.getElementById('drug-info-analysis')?.value || '',
+        report:   document.getElementById('drug-info-report')?.value   || '',
+        stage:    document.getElementById('drug-info-stage')?.value    || '',
+        issue:    document.getElementById('drug-info-issue')?.value    || '',
+    };
+}
+
 async function syncToCOA() {
     const records = collectWeightRecords();
-    
     if (records.length === 0) {
         alert('Không có dữ liệu để tạo COA. Vui lòng quét ảnh trước.');
         return;
     }
-    
+
+    btnSyncCOA.disabled = true;
+    btnSyncCOA.querySelector('span').textContent = 'Đang tạo COA...';
+
     try {
-        // Disable button during processing
-        btnSyncCOA.disabled = true;
-        btnSyncCOA.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px; height:16px;"><circle cx="12" cy="12" r="10" style="stroke-dasharray: 40; animation: spin 1s linear infinite"/></svg><span>Đang tạo COA...</span>';
-        
-        // Call the COA generation API
-        const response = await fetch('/scan/coa-api/', {
+        const response = await fetch('/user/scan/coa-api/', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
+                'X-CSRFToken': getCsrf()
             },
-            body: JSON.stringify({ records: records })
+            body: JSON.stringify({
+                records:   records,
+                drug_info: collectDrugInfo()
+            })
         });
-        
+
         const result = await response.json();
-        
+
         if (result.success) {
-            // Open COA in new window
+            // Mở COA trong tab mới
             const coaWindow = window.open('', '_blank');
             if (coaWindow) {
                 coaWindow.document.write(result.html);
                 coaWindow.document.close();
             } else {
-                alert('Không thể mở COA. Vui lòng kiểm tra cài đặt trình duyệt.');
+                alert('Trình duyệt chặn popup. Vui lòng cho phép popup từ trang này.');
             }
-            
-            // Update statistics
+
+            // Cập nhật counter
             document.getElementById('session-stitch-counter').textContent = `${records.length} mẫu hoàn tất`;
+
+            // Hiện thông báo thành công với link đến dashboard
+            showSuccessModal(
+                `Phiếu COA đã được tạo và lưu vào lịch sử (mã ${result.doc_id || ''}).` +
+                ' Vào Dashboard để kiểm duyệt kết quả kiểm nghiệm.'
+            );
         } else {
             alert(`Lỗi: ${result.error}`);
         }
-        
-    } catch (error) {
-        console.error('Error syncing to COA:', error);
-        alert('Lỗi khi tạo COA. Vui lòng thử lại.');
+    } catch (err) {
+        console.error('syncToCOA error:', err);
+        alert('Lỗi kết nối khi tạo COA. Vui lòng thử lại.');
     } finally {
-        // Re-enable button
         btnSyncCOA.disabled = false;
-        btnSyncCOA.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px; height:16px;"><path d="M17 3a2.82 2.82 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path><path d="m15 5 4 4"></path></svg><span>Đồng bộ sang Phiếu COA</span>';
+        btnSyncCOA.querySelector('span').textContent = 'Đồng bộ sang Phiếu COA';
     }
 }
 
-// Event listener for COA sync button
-btnSyncCOA.addEventListener('click', syncToCOA);
-
-// Add CSS for animation
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes spin {
-        0% { stroke-dasharray: 1, 200; stroke-dashoffset: 0; }
-        50% { stroke-dasharray: 89, 200; stroke-dashoffset: -35; }
-        100% { stroke-dasharray: 89, 200; stroke-dashoffset: -124; }
-    }
-`;
-document.head.appendChild(style);
+btnSyncCOA?.addEventListener('click', syncToCOA);
 </script>

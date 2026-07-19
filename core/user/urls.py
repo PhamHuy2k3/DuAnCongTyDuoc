@@ -8,10 +8,23 @@ urlpatterns = [
     path('scan/receipt-api/', views.scan_receipt_api, name='scan_receipt_api'),
     path('scan/coa-api/', views.generate_coa_from_scanned_data, name='generate_coa_api'),
     path('register/', views.register_view, name='register'),
-    path('dashboard/', views.dashboard_view, name='dashboard'),
-    path('dashboard/stats/', views.dashboard_stats, name='dashboard_stats'),
-    path('dashboard/approve/<int:doc_id>/', views.approve_document, name='approve_document'),
-    path('dashboard/reject/<int:doc_id>/', views.reject_document, name='reject_document'),
     path('profile/', views.profile_view, name='profile'),
     path('coa/', views.coa_view, name='coa_report'),
+
+    # ── Dashboard ───────────────────────────────────────────────────────────
+    path('dashboard/', views.dashboard_view, name='dashboard'),
+    path('dashboard/stats/', views.dashboard_stats, name='dashboard_stats'),
+
+    # ── ScannedDocument CRUD ─────────────────────────────────────────────────
+    path('dashboard/documents/', views.document_list_api, name='document_list_api'),
+    path('dashboard/documents/<int:doc_id>/', views.document_detail, name='document_detail'),
+    path('dashboard/documents/<int:doc_id>/delete/', views.delete_document, name='delete_document'),
+    path('dashboard/approve/<int:doc_id>/', views.approve_document, name='approve_document'),
+    path('dashboard/reject/<int:doc_id>/', views.reject_document, name='reject_document'),
+
+    # ── MedicineItem CRUD ────────────────────────────────────────────────────
+    path('dashboard/medicines/', views.medicine_list_api, name='medicine_list_api'),
+    path('dashboard/medicines/create/', views.medicine_create, name='medicine_create'),
+    path('dashboard/medicines/<int:med_id>/update/', views.medicine_update, name='medicine_update'),
+    path('dashboard/medicines/<int:med_id>/delete/', views.medicine_delete, name='medicine_delete'),
 ]

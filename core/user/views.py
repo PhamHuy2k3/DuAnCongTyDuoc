@@ -16,6 +16,7 @@ import re
 import logging
 from datetime import datetime
 from django.db.models import Avg
+from coreapp.services import log_action
 
 logger = logging.getLogger('user')
 
@@ -173,6 +174,11 @@ def approve_document(request, doc_id):
             med.approved_by = request.user
             med.approved_at = timezone.now()
             med.save()
+            
+        log_action(request, 'DOC_APPROVED', target_type='Document',
+                   target_id=doc.id, target_label=doc.file_name,
+                   detail={'reviewed_by': request.user.username})
+                   
         return JsonResponse({'success': True})
     return JsonResponse({'success': False, 'error': 'Invalid method'}, status=405)
 
@@ -186,6 +192,11 @@ def reject_document(request, doc_id):
         doc.reviewed_at = timezone.now()
         doc.notes = request.POST.get('notes', '')
         doc.save()
+        
+        log_action(request, 'DOC_REJECTED', target_type='Document',
+                   target_id=doc.id, target_label=doc.file_name,
+                   detail={'reviewed_by': request.user.username, 'notes': doc.notes})
+                   
         return JsonResponse({'success': True})
     return JsonResponse({'success': False, 'error': 'Invalid method'}, status=405)
 
@@ -268,6 +279,230 @@ def profile_view(request):
         'medicines_count': medicines_count,
     }
     return render(request, 'user/profile.html', context)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# DASHBOARD CRUD ENDPOINTS
+# ─────────────────────────────────────────────────────────────────────────────
+
+@login_required(login_url='login')
+def document_detail(request, doc_id):
+    """Trả về chi tiết 1 ScannedDocument dưới dạng JSON."""
+    doc = get_object_or_404(ScannedDocument, id=doc_id, user=request.user)
+    med = doc.medicine
+    return JsonResponse({
+        'success': True,
+        'doc': {
+            'id': doc.id,
+            'file_name': doc.file_name,
+            'scanned_at': doc.scanned_at.strftime('%d/%m/%Y %H:%M'),
+            'status': doc.status,
+            'status_display': doc.get_status_display(),
+            'accuracy_score': doc.accuracy_score,
+            'notes': doc.notes,
+            'reviewed_by': doc.reviewed_by.get_full_name() if doc.reviewed_by else '',
+            'reviewed_at': doc.reviewed_at.strftime('%d/%m/%Y %H:%M') if doc.reviewed_at else '',
+            'medicine': {
+                'id': med.id,
+                'trade_name': med.trade_name,
+                'active_ingredient': med.active_ingredient,
+                'strength': med.strength,
+                'dosage_form': med.dosage_form,
+                'manufacturer': med.manufacturer,
+                'batch_number': med.batch_number,
+                'registration_number': med.registration_number,
+                'mfg_date': med.mfg_date,
+                'exp_date': med.exp_date,
+                'indications': med.indications,
+            } if med else None,
+        }
+    })
+
+
+@login_required(login_url='login')
+def delete_document(request, doc_id):
+    """Xóa một ScannedDocument (và MedicineItem liên quan)."""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Chỉ hỗ trợ POST'}, status=405)
+    doc = get_object_or_404(ScannedDocument, id=doc_id, user=request.user)
+    med = doc.medicine
+    doc.delete()
+    if med:
+        med.delete()
+    logger.info(f"User {request.user.username} deleted document {doc_id}")
+    return JsonResponse({'success': True})
+
+
+@login_required(login_url='login')
+def medicine_list_api(request):
+    """Trả về danh sách dược phẩm của user dưới dạng JSON (có search/filter)."""
+    qs = MedicineItem.objects.filter(
+        scanneddocument__user=request.user
+    ).distinct().order_by('-created_at')
+
+    search = request.GET.get('q', '').strip()
+    if search:
+        qs = qs.filter(
+            Q(trade_name__icontains=search) |
+            Q(active_ingredient__icontains=search) |
+            Q(batch_number__icontains=search)
+        )
+
+    status_filter = request.GET.get('status', '')
+    if status_filter in ('pending', 'approved', 'rejected'):
+        qs = qs.filter(scanneddocument__status=status_filter)
+
+    items = []
+    for med in qs:
+        doc = ScannedDocument.objects.filter(medicine=med).first()
+        items.append({
+            'id': med.id,
+            'trade_name': med.trade_name,
+            'active_ingredient': med.active_ingredient,
+            'strength': med.strength,
+            'dosage_form': med.dosage_form,
+            'manufacturer': med.manufacturer,
+            'batch_number': med.batch_number,
+            'registration_number': med.registration_number,
+            'mfg_date': med.mfg_date,
+            'exp_date': med.exp_date,
+            'indications': med.indications,
+            'created_at': med.created_at.strftime('%d/%m/%Y'),
+            'doc_id': doc.id if doc else None,
+            'doc_status': doc.get_status_display() if doc else '',
+            'doc_status_raw': doc.status if doc else '',
+        })
+    return JsonResponse({'success': True, 'items': items, 'total': len(items)})
+
+
+@csrf_exempt
+@login_required(login_url='login')
+def medicine_create(request):
+    """Tạo mới MedicineItem + ScannedDocument thủ công."""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Chỉ hỗ trợ POST'}, status=405)
+    try:
+        body = json.loads(request.body)
+        med = MedicineItem.objects.create(
+            trade_name=body.get('trade_name', ''),
+            active_ingredient=body.get('active_ingredient', ''),
+            strength=body.get('strength', ''),
+            dosage_form=body.get('dosage_form', ''),
+            manufacturer=body.get('manufacturer', ''),
+            batch_number=body.get('batch_number', ''),
+            registration_number=body.get('registration_number', ''),
+            mfg_date=body.get('mfg_date', ''),
+            exp_date=body.get('exp_date', ''),
+            indications=body.get('indications', ''),
+        )
+        doc = ScannedDocument.objects.create(
+            user=request.user,
+            medicine=med,
+            file_name=f"[Nhập tay] {med.trade_name}",
+            accuracy_score=100.0,
+            status='approved',
+            reviewed_by=request.user,
+            reviewed_at=timezone.now(),
+        )
+        med.approved_by = request.user
+        med.approved_at = timezone.now()
+        med.save()
+        logger.info(f"User {request.user.username} manually created medicine {med.id}")
+        return JsonResponse({'success': True, 'medicine_id': med.id, 'doc_id': doc.id})
+    except Exception as e:
+        logger.error(f"medicine_create error: {e}")
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@login_required(login_url='login')
+def medicine_update(request, med_id):
+    """Cập nhật MedicineItem."""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Chỉ hỗ trợ POST'}, status=405)
+    # Chỉ cho phép sửa nếu medicine thuộc về doc của user
+    med = get_object_or_404(
+        MedicineItem,
+        id=med_id,
+        scanneddocument__user=request.user
+    )
+    try:
+        body = json.loads(request.body)
+        fields = ['trade_name', 'active_ingredient', 'strength', 'dosage_form',
+                  'manufacturer', 'batch_number', 'registration_number',
+                  'mfg_date', 'exp_date', 'indications']
+        for f in fields:
+            if f in body:
+                setattr(med, f, body[f])
+        med.save()
+        logger.info(f"User {request.user.username} updated medicine {med_id}")
+        return JsonResponse({'success': True})
+    except Exception as e:
+        logger.error(f"medicine_update error: {e}")
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required(login_url='login')
+def medicine_delete(request, med_id):
+    """Xóa MedicineItem (và ScannedDocument liên quan)."""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Chỉ hỗ trợ POST'}, status=405)
+    med = get_object_or_404(
+        MedicineItem,
+        id=med_id,
+        scanneddocument__user=request.user
+    )
+    doc = ScannedDocument.objects.filter(medicine=med).first()
+    if doc:
+        doc.delete()
+        
+    _deleted_info = {
+        'trade_name': med.trade_name,
+        'batch_number': med.batch_number,
+        'deleted_by': request.user.username
+    }
+    
+    med.delete()
+    logger.info(f"User {request.user.username} deleted medicine {med_id}")
+    
+    log_action(request, 'MEDICINE_DELETED', target_type='Medicine',
+               target_label=_deleted_info['trade_name'],
+               detail=_deleted_info)
+               
+    return JsonResponse({'success': True})
+
+
+@login_required(login_url='login')
+def document_list_api(request):
+    """Trả về danh sách ScannedDocument của user dưới dạng JSON."""
+    qs = ScannedDocument.objects.filter(user=request.user).select_related('medicine', 'reviewed_by').order_by('-scanned_at')
+
+    search = request.GET.get('q', '').strip()
+    if search:
+        qs = qs.filter(
+            Q(file_name__icontains=search) |
+            Q(medicine__trade_name__icontains=search)
+        )
+
+    status_filter = request.GET.get('status', '')
+    if status_filter in ('pending', 'approved', 'rejected'):
+        qs = qs.filter(status=status_filter)
+
+    items = []
+    for doc in qs:
+        med = doc.medicine
+        items.append({
+            'id': doc.id,
+            'file_name': doc.file_name,
+            'scanned_at': doc.scanned_at.strftime('%d/%m/%Y %H:%M'),
+            'status': doc.status,
+            'status_display': doc.get_status_display(),
+            'accuracy_score': doc.accuracy_score,
+            'notes': doc.notes,
+            'medicine_name': med.trade_name if med else '—',
+            'batch_number': med.batch_number if med else '—',
+        })
+    return JsonResponse({'success': True, 'items': items, 'total': len(items)})
 
 
 def coa_view(request):
@@ -443,7 +678,7 @@ def generate_coa_from_scanned_data(request):
             })
 
         # ── Pharmacopoeia statistics ───────────────────────────────────────
-        stats = {}
+        stats_formatted = {}   # default nếu không parse được khối lượng nào
         if weights_mg:
             n = len(weights_mg)
             mean_mg = sum(weights_mg) / n
@@ -511,9 +746,51 @@ def generate_coa_from_scanned_data(request):
         scan_date = raw_date.split(' ')[0] if ' ' in raw_date else raw_date
 
         # ── Save records to database ──────────────────────────────────────
+        # 1. Tạo MedicineItem đại diện cho lô cân này
+        # drug_info keys từ scan.html: name, generic, lot, std, analysis, report, stage, issue
+        drug_name = (drug_info.get('name') or '').strip() or 'Phiếu cân Lab'
+        batch_no  = (drug_info.get('lot') or '').strip() or snr or scan_date
+
+        # Chuẩn hoá drug_info để template dynamic_coa.html dùng nhất quán
+        drug_info_ctx = {
+            'drug_name':       drug_name,
+            'generic_name':    drug_info.get('generic', ''),
+            'lot_number':      batch_no,
+            'std_number':      drug_info.get('std', ''),
+            'analysis_number': drug_info.get('analysis', ''),
+            'report_number':   drug_info.get('report', ''),
+            'stage':           drug_info.get('stage', 'BAO PHIM'),
+            'issue':           drug_info.get('issue', '01'),
+        }
+
+        med = MedicineItem.objects.create(
+            trade_name=drug_name,
+            active_ingredient=drug_info_ctx['generic_name'],
+            strength='',
+            dosage_form='Viên nén',
+            manufacturer='',
+            batch_number=batch_no,
+            registration_number=drug_info_ctx['std_number'],
+            mfg_date='',
+            exp_date='',
+            indications=f"Phiếu kiểm nghiệm ĐĐKL - {drug_info_ctx['analysis_number']}",
+        )
+
+        # 2. Tạo ScannedDocument để gắn vào lịch sử dashboard
+        file_label = f"[Phiếu cân] {drug_name} - Lô {batch_no}"
+        doc_record = ScannedDocument.objects.create(
+            user=request.user,
+            medicine=med,
+            file_name=file_label,
+            accuracy_score=99.0,
+            status='pending',
+        )
+
+        # 3. Lưu các bản ghi cân và gắn vào ScannedDocument
         for r in parsed_records:
             WeightUniformityRecord.objects.create(
                 user=request.user,
+                scanned_document=doc_record,
                 pill_number=r['stt'],
                 weight=str(r['weight_raw']),
                 timestamp=timezone.now(),
@@ -522,15 +799,19 @@ def generate_coa_from_scanned_data(request):
             )
 
         context = {
-            'stats': stats_formatted,
+            'stats': stats_formatted if weights_mg else {},
             'balance_type': balance_type,
             'snr': snr,
             'scan_date': scan_date,
-            'drug_info': drug_info,
+            'drug_info': drug_info_ctx,
             'user': request.user,
             'generated_at': timezone.now().strftime('%d/%m/%Y %H:%M:%S'),
         }
 
+        # Truyền tất cả records vào context (không giới hạn 20)
+        context['parsed_records'] = parsed_records
+
+        # Vẫn giữ w1-w20 để tương thích ngược với phần cứng trong template
         for i in range(1, 21):
             w_val = '—'
             if i - 1 < len(parsed_records):
@@ -545,7 +826,9 @@ def generate_coa_from_scanned_data(request):
         return JsonResponse({
             'success': True,
             'html': html_content,
-            'statistics': stats,
+            'statistics': stats_formatted,
+            'doc_id': doc_record.id,
+            'medicine_id': med.id,
         })
 
 

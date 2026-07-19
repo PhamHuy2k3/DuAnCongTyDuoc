@@ -2760,6 +2760,201 @@ button, input, textarea {
         max-height: 60vh;
     }
 }
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    width: 160px;
+    animation: fadeInUp 0.3s ease;
+}
+
+.dl-status-text {
+    font-size: 0.72rem;
+    color: #38bdf8;
+    font-weight: 500;
+}
+
+.dl-progress-bar {
+    height: 4px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.dl-progress-bar .fill {
+    height: 100%;
+    background-color: var(--primary);
+    border-radius: 2px;
+    transition: width 0.1s linear;
+}
+
+/* ==========================================================================
+   22. TEMPLATES MAP GRAPH
+   ========================================================================== */
+.template-map-grid {
+    width: 100%;
+}
+
+.map-card {
+    border-color: rgba(14, 165, 233, 0.15);
+    background: rgba(14, 165, 233, 0.01);
+}
+
+.map-card-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    font-weight: 800;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--surface-border);
+    padding-bottom: 16px;
+    margin-bottom: 20px;
+}
+
+.map-card-header .connector {
+    color: var(--primary);
+}
+
+.map-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.map-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 16px;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--surface-border);
+    border-radius: 6px;
+    transition: var(--transition-fast);
+}
+
+.map-row:hover {
+    border-color: var(--primary-glow);
+    background: rgba(14, 165, 233, 0.03);
+}
+
+.map-row .node {
+    color: #e2e8f0;
+    font-family: monospace;
+    font-size: 0.78rem;
+}
+
+.map-row .line-dot {
+    color: var(--primary);
+    font-weight: 700;
+}
+
+.map-row .db-field {
+    color: #38bdf8;
+    font-family: monospace;
+    font-weight: 700;
+    font-size: 0.78rem;
+}
+
+/* ==========================================================================
+   23. AUDIT REVIEW MODAL (SIDE-BY-SIDE REVIEW)
+   ========================================================================== */
+.audit-modal-card {
+    max-width: 960px;
+    width: 95%;
+    padding: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    max-height: 90vh;
+}
+
+.audit-modal-header {
+    padding: 24px 32px;
+    border-bottom: 1px solid var(--surface-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.audit-modal-header h3 {
+    font-family: var(--font-heading);
+    font-size: 1.35rem;
+    font-weight: 700;
+    letter-spacing: -0.4px;
+    margin-top: 6px;
+}
+
+.audit-modal-body {
+    padding: 24px 32px;
+    display: grid;
+    grid-template-columns: 1fr 1.1fr;
+    gap: 28px;
+    overflow-y: auto;
+}
+
+.audit-side-col {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.side-col-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--text-muted);
+}
+
+.audit-modal-footer {
+    padding: 20px 32px;
+    border-top: 1px solid var(--surface-border);
+    display: flex;
+    justify-content: flex-end;
+    gap: 16px;
+    background: rgba(0, 0, 0, 0.25);
+}
+
+/* ==========================================================================
+   24. RESPONSIVE DASHBOARD & SIDEBAR SCROLL
+   ========================================================================== */
+@media (max-width: 1024px) and (min-width: 769px) {
+    .db-sidebar {
+        width: 70px;
+        align-items: center;
+    }
+    
+    .db-sidebar-brand {
+        padding: 20px 10px;
+    }
+    
+    .logo-text, .db-role-badge, .db-menu-item span, .pending-count-bubble, .user-info, .btn-logout span {
+        display: none !important;
+    }
+
+    .db-sidebar-menu {
+        padding: 20px 8px;
+    }
+    
+    .db-menu-item {
+        padding: 12px;
+        justify-content: center;
+    }
+    
+    .kpi-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+    
+    .charts-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .audit-modal-body {
+        grid-template-columns: 1fr;
+        max-height: 60vh;
+    }
+}
 
 @media (max-width: 768px) {
     .kpi-grid {
@@ -2782,7 +2977,63 @@ button, input, textarea {
     }
 }
 
-. f o r m - g r i d - 3   {   d i s p l a y :   g r i d ;   g r i d - t e m p l a t e - c o l u m n s :   r e p e a t ( 3 ,   1 f r ) ;   g a p :   1 6 p x ;   }   @ m e d i a   ( m a x - w i d t h :   7 6 8 p x )   {   . f o r m - g r i d - 3   {   g r i d - t e m p l a t e - c o l u m n s :   1 f r ;   }   }  
- 
+.form-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; } 
+@media (max-width: 768px) { .form-grid-3 { grid-template-columns: 1fr; } }
+ 
 .action-icon { width: 24px; height: 24px; margin-right: 12px; }
 .scan-actions .btn-large { max-height: 60px; display: flex; align-items: center; justify-content: center; flex-direction: row; }
+
+/* ==========================================================================
+   USER APP RESPONSIVE DESIGN (ADDED)
+   ========================================================================== */
+@media (max-width: 1024px) {
+    .hero-title { font-size: 2.8rem; }
+    .hero-grid { gap: 30px; }
+}
+
+@media (max-width: 768px) {
+    .nav-menu {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        width: 100%;
+        background: var(--surface-dark-solid);
+        flex-direction: column;
+        padding: 20px;
+        gap: 15px;
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(-10px);
+        transition: var(--transition-smooth);
+        border-bottom: 1px solid var(--surface-border);
+        box-shadow: var(--shadow-md);
+    }
+    .nav-menu.open {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+    }
+    .mobile-toggle { display: flex; }
+    .nav-actions .btn-nav { display: none; }
+    
+    .hero-grid {
+        grid-template-columns: 1fr;
+        text-align: center;
+    }
+    .hero-actions {
+        justify-content: center;
+    }
+    .hero-title { font-size: 2.2rem; }
+    .mockup-dashboard { transform: none; max-width: 100%; margin: 0 auto; }
+    .mockup-dashboard:hover { transform: scale(1.02); }
+    
+    .footer-grid {
+        grid-template-columns: 1fr;
+        gap: 30px;
+    }
+    .footer-bottom-flex {
+        flex-direction: column;
+        text-align: center;
+        gap: 10px;
+    }
+}
