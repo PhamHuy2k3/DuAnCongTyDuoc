@@ -8,7 +8,7 @@ from django.contrib import messages
 from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
 from django.core.exceptions import ValidationError
-from .models import ScannedDocument, MedicineItem, WeightUniformityRecord
+from .models import ScannedDocument, MedicineItem, WeightUniformityRecord, SavedCOAReport
 from .services import process_image, validate_image_file, extract_balance_receipt_records
 import json
 import os
@@ -143,6 +143,8 @@ def dashboard_view(request):
             avg_accuracy = docs.filter(accuracy_score__gt=0).aggregate(Avg('accuracy_score'))['accuracy_score__avg'] or 0
             avg_accuracy = round(avg_accuracy, 1)
 
+        saved_reports = SavedCOAReport.objects.filter(user=request.user).order_by('-saved_at')
+
         context = {
             'total_scans': total_scans,
             'pending_count': pending_count,
@@ -152,6 +154,7 @@ def dashboard_view(request):
             'latest_docs': latest_docs,
             'pending_docs': pending_docs,
             'approved_medicines': approved_medicines,
+            'saved_reports': saved_reports,
         }
         return render(request, 'user/dashboard.html', context)
         
@@ -247,6 +250,7 @@ def profile_view(request):
                 except ValueError:
                     pass
             user.save()
+            log_action(request, 'PROFILE_UPDATED', target_type='User', target_label=user.username, target_id=user.id)
             messages.success(request, 'Cập nhật thông tin thành công!')
             return redirect('profile')
 
@@ -408,6 +412,7 @@ def medicine_create(request):
         med.approved_at = timezone.now()
         med.save()
         logger.info(f"User {request.user.username} manually created medicine {med.id}")
+        log_action(request, 'MEDICINE_CREATED', target_type='MedicineItem', target_label=med.trade_name, target_id=med.id)
         return JsonResponse({'success': True, 'medicine_id': med.id, 'doc_id': doc.id})
     except Exception as e:
         logger.error(f"medicine_create error: {e}")
@@ -436,6 +441,7 @@ def medicine_update(request, med_id):
                 setattr(med, f, body[f])
         med.save()
         logger.info(f"User {request.user.username} updated medicine {med_id}")
+        log_action(request, 'MEDICINE_UPDATED', target_type='MedicineItem', target_label=med.trade_name, target_id=med.id)
         return JsonResponse({'success': True})
     except Exception as e:
         logger.error(f"medicine_update error: {e}")
@@ -785,6 +791,9 @@ def generate_coa_from_scanned_data(request):
             accuracy_score=99.0,
             status='pending',
         )
+        
+        log_action(request, 'MEDICINE_CREATED', target_type='MedicineItem', target_label=med.trade_name)
+        log_action(request, 'DOC_SCANNED', target_type='ScannedDocument', target_label=file_label, target_id=doc_record.id)
 
         # 3. Lưu các bản ghi cân và gắn vào ScannedDocument
         for r in parsed_records:
@@ -806,19 +815,60 @@ def generate_coa_from_scanned_data(request):
             'drug_info': drug_info_ctx,
             'user': request.user,
             'generated_at': timezone.now().strftime('%d/%m/%Y %H:%M:%S'),
+            'doc_id': doc_record.id if doc_record else None,
         }
 
-        # Truyền tất cả records vào context (không giới hạn 20)
         context['parsed_records'] = parsed_records
 
-        # Vẫn giữ w1-w20 để tương thích ngược với phần cứng trong template
-        for i in range(1, 21):
-            w_val = '—'
-            if i - 1 < len(parsed_records):
-                r = parsed_records[i - 1]
-                if r['weight_mg'] is not None:
-                    w_val = f"{r['weight_mg']:.2f}".replace('.', ',')
-            context[f'w{i}'] = w_val
+        chunked_records = []
+        for i in range(0, len(parsed_records), 20):
+            chunk_list = parsed_records[i:i+20]
+            chunk_dict = {}
+            for j in range(1, 21):
+                w_val = '—'
+                if j - 1 < len(chunk_list):
+                    r = chunk_list[j - 1]
+                    if r['weight_mg'] is not None:
+                        w_val = f"{r['weight_mg']:.2f}".replace('.', ',')
+                chunk_dict[f'w{j}'] = w_val
+            
+            c_weights = [r['weight_mg'] for r in chunk_list if r['weight_mg'] is not None]
+            c_stats = {}
+            if c_weights:
+                cn = len(c_weights)
+                cmean = sum(c_weights) / cn
+                cl5 = cmean * 0.95
+                cu5 = cmean * 1.05
+                cl10 = cmean * 0.90
+                cu10 = cmean * 1.10
+                
+                cout5 = 0
+                cout10 = 0
+                for cw in c_weights:
+                    if cw < cl10 or cw > cu10:
+                        cout10 += 1
+                        cout5 += 1
+                    elif cw < cl5 or cw > cu5:
+                        cout5 += 1
+                
+                cpass = 'Đạt' if (cout5 <= 2 and cout10 == 0) else 'Không đạt'
+                def fmt_c(val): return f"{val:.2f}".replace('.', ',') if val is not None else '—'
+                
+                c_stats = {
+                    'n': cn, 'mean_mg': fmt_c(cmean), 'min_mg': fmt_c(min(c_weights)),
+                    'max_mg': fmt_c(max(c_weights)), 'lower_5': fmt_c(cl5), 'upper_5': fmt_c(cu5),
+                    'lower_10': fmt_c(cl10), 'upper_10': fmt_c(cu10),
+                    'out_5': cout5, 'out_10': cout10, 'pass_fail': cpass
+                }
+            chunk_dict['stats'] = c_stats if c_stats else stats_formatted
+            chunked_records.append(chunk_dict)
+            
+        if not chunked_records:
+            chunk_dict = {f'w{j}': '—' for j in range(1, 21)}
+            chunk_dict['stats'] = stats_formatted
+            chunked_records.append(chunk_dict)
+
+        context['chunked_records'] = chunked_records
 
         from django.template.loader import render_to_string
         html_content = render_to_string('user/dynamic_coa.html', context)
@@ -838,3 +888,89 @@ def generate_coa_from_scanned_data(request):
         logger.error(f"Error generating COA: {str(e)}")
         return JsonResponse({'success': False, 'error': f'Lỗi hệ thống: {str(e)}'}, status=500)
 
+
+
+@login_required(login_url='login')
+def save_coa_report(request):
+    if request.method == 'POST':
+        html_content = request.POST.get('html_content')
+        doc_id = request.POST.get('doc_id')
+        
+        if not html_content:
+            return JsonResponse({'success': False, 'error': 'Không có dữ liệu HTML'})
+            
+        doc_record = None
+        if doc_id:
+            try:
+                doc_record = ScannedDocument.objects.get(id=doc_id)
+            except ScannedDocument.DoesNotExist:
+                pass
+                
+        saved_report = SavedCOAReport.objects.create(
+            user=request.user,
+            scanned_document=doc_record,
+            html_content=html_content
+        )
+        
+        doc_name = doc_record.file_name if doc_record else "Phiếu COA Độc Lập"
+        log_action(request, 'COA_SAVED', target_type='SavedCOAReport', target_label=doc_name, target_id=saved_report.id)
+        
+        return JsonResponse({'success': True})
+    return JsonResponse({'success': False, 'error': 'Yêu cầu không hợp lệ'})
+
+@login_required(login_url='login')
+def view_saved_coa(request, report_id):
+    try:
+        report = SavedCOAReport.objects.get(id=report_id)
+        from django.http import HttpResponse
+        
+        # Inject Javascript to hide the save button when viewing a saved report
+        html = report.html_content
+        hide_script = "<script>document.addEventListener('DOMContentLoaded', () => { var btn = document.getElementById('btn-save-coa'); if(btn) btn.style.display='none'; });</script>"
+        if '</body>' in html:
+            html = html.replace('</body>', hide_script + '</body>')
+        else:
+            html += hide_script
+            
+        full_html = f"""<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Phiếu Báo Cáo Đã Lưu</title>
+<style>
+@media print {{
+  .no-print {{ display: none !important; }}
+  body {{ background: #fff !important; margin: 0; }}
+  .pf {{ margin: 0; padding: 0 !important; box-shadow: none !important; page-break-after: always; width: 100% !important; border: none !important; }}
+}}
+body {{ background: #e0e0e0; font-family: 'Times New Roman', Times, serif; font-size: 13pt; margin: 0; padding: 0; }}
+#page-container {{ display: flex; flex-direction: column; align-items: center; gap: 20px; padding: 20px; }}
+.pf {{ background: white; width: 210mm; min-height: 297mm; padding: 15mm; box-shadow: 0 4px 12px rgba(0,0,0,0.1); box-sizing: border-box; position: relative; margin: 0 auto; outline: 1px solid #ccc; }}
+table {{ border-collapse: collapse; width: 100%; margin-bottom: 10px; }}
+table, th, td {{ border: 1px solid black; }}
+th, td {{ padding: 4px; text-align: center; vertical-align: middle; }}
+.no-border, .no-border th, .no-border td {{ border: none !important; text-align: left; }}
+.header-table td {{ border: 1px solid black; }}
+h1, h2, h3 {{ margin: 0; padding: 0; font-size: 13pt; }}
+.section-title {{ font-weight: bold; margin-top: 10px; margin-bottom: 5px; text-align: left; }}
+</style>
+</head>
+<body>
+<div class="no-print" style="background: #1e40af; color: #fff; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; font-family: Arial, sans-serif; font-size: 13px; z-index: 9999; position: sticky; top: 0;">
+  <div>
+    <span style="font-size: 15px; font-weight: bold;">📄 Phiếu Báo Cáo Đã Lưu</span>
+  </div>
+  <div style="display: flex; gap: 10px;">
+    <button onclick="window.print()" style="padding: 7px 18px; border: 1px solid rgba(255,255,255,0.4); border-radius: 4px; background: #16a34a; color: #fff; cursor: pointer; font-size: 13px; font-weight: bold;">🖨️ In phiếu</button>
+    <button onclick="window.close()" style="padding: 7px 18px; border: 1px solid rgba(255,255,255,0.4); border-radius: 4px; background: rgba(255,255,255,0.15); color: #fff; cursor: pointer; font-size: 13px;">✕ Đóng</button>
+  </div>
+</div>
+<div id="page-container">
+{html}
+</div>
+</body>
+</html>"""
+        return HttpResponse(full_html)
+    except SavedCOAReport.DoesNotExist:
+        return HttpResponse('Không tìm thấy phiếu đã lưu', status=404)

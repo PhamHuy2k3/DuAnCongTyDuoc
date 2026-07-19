@@ -10,6 +10,8 @@ urlpatterns = [
     path('register/', views.register_view, name='register'),
     path('profile/', views.profile_view, name='profile'),
     path('coa/', views.coa_view, name='coa_report'),
+    path('save-coa/', views.save_coa_report, name='save_coa_report'),
+    path('view-saved-coa/<int:report_id>/', views.view_saved_coa, name='view_saved_coa'),
 
     # ── Dashboard ───────────────────────────────────────────────────────────
     path('dashboard/', views.dashboard_view, name='dashboard'),

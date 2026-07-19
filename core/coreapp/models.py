@@ -53,7 +53,12 @@ class SystemLog(models.Model):
         ('USER_UNLOCKED', 'Mở khóa tài khoản'),
         ('DOC_APPROVED', 'Duyệt tài liệu'),
         ('DOC_REJECTED', 'Từ chối tài liệu'),
+        ('DOC_SCANNED', 'Quét tài liệu'),
+        ('COA_SAVED', 'Lưu phiếu COA'),
+        ('MEDICINE_CREATED', 'Thêm dược phẩm'),
+        ('MEDICINE_UPDATED', 'Cập nhật dược phẩm'),
         ('MEDICINE_DELETED', 'Xóa dược phẩm'),
+        ('PROFILE_UPDATED', 'Cập nhật hồ sơ'),
     ]
 
     actor = models.ForeignKey(

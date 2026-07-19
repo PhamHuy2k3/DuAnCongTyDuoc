@@ -96,3 +96,25 @@ class ScannedDocument(models.Model):
 
     def __str__(self):
         return f"{self.file_name} ({self.get_status_display()})"
+
+
+class SavedCOAReport(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+        verbose_name="Người lưu"
+    )
+    scanned_document = models.ForeignKey(
+        'ScannedDocument', on_delete=models.SET_NULL,
+        null=True, blank=True, verbose_name="Tài liệu gốc"
+    )
+    html_content = models.TextField(verbose_name="Nội dung COA (HTML)")
+    saved_at = models.DateTimeField(default=timezone.now, verbose_name="Ngày lưu")
+
+    class Meta:
+        verbose_name = "Phiếu báo cáo đã lưu"
+        verbose_name_plural = "Các phiếu báo cáo đã lưu"
+        ordering = ['-saved_at']
+
+    def __str__(self):
+        doc_name = self.scanned_document.file_name if self.scanned_document else "Không rõ tài liệu"
+        return f"Phiếu đã lưu - {doc_name} - {self.saved_at.strftime('%d/%m/%Y %H:%M')}"

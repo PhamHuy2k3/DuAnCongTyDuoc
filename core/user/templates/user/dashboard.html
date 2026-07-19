@@ -80,6 +80,10 @@ body{padding-top:0!important;background-color:var(--bg-dark)}
         <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
         <span>Danh mục Dược phẩm</span>
       </button>
+      <button class="db-menu-item" data-tab="tab-saved-coa">
+        <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+        <span>Phiếu COA đã lưu</span>
+      </button>
     </nav>
     <div class="db-sidebar-footer">
       <div class="user-profile-flex">
@@ -223,6 +227,38 @@ body{padding-top:0!important;background-color:var(--bg-dark)}
         </div>
       </div>
 
+      <!-- TAB 4: SAVED COA -->
+      <div class="db-tab-pane" id="tab-saved-coa">
+        <div class="card glass-card table-card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+            <h4 class="table-inner-title" style="margin:0">Quản lý Phiếu Báo Cáo đã lưu</h4>
+          </div>
+          <div class="tbl-wrap">
+            <table class="tbl">
+              <thead><tr>
+                <th>Ngày lưu</th>
+                <th>Tài liệu gốc</th>
+                <th>Thao tác</th>
+              </tr></thead>
+              <tbody>
+                {% for report in saved_reports %}
+                <tr>
+                  <td>{{ report.saved_at|date:"d/m/Y H:i" }}</td>
+                  <td>{{ report.scanned_document.file_name|default:"—" }}</td>
+                  <td style="display:flex;gap:6px;">
+                    <a href="{% url 'view_saved_coa' report.id %}" target="_blank" class="act-btn act-view" style="text-decoration:none;">Mở phiếu</a>
+                    <!-- Có thể thêm nút xóa ở đây nếu cần -->
+                  </td>
+                </tr>
+                {% empty %}
+                <tr class="empty-row"><td colspan="3">Chưa có phiếu báo cáo nào được lưu.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
     </div><!-- db-content-scroll -->
   </main>
 </div><!-- dashboard-wrapper -->
@@ -314,7 +350,7 @@ const liveDateEl = document.getElementById('db-live-date');
 if(liveDateEl) liveDateEl.textContent = new Date().toLocaleDateString('vi-VN',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
 
 // ── Tab switching ────────────────────────────────────────────────────────────
-const tabTitles = {'tab-overview':'Tổng quan Hệ thống','tab-scans':'Lịch sử & Kiểm duyệt','tab-medicines':'Kho Dược phẩm'};
+const tabTitles = {'tab-overview':'Tổng quan Hệ thống','tab-scans':'Lịch sử & Kiểm duyệt','tab-medicines':'Kho Dược phẩm','tab-saved-coa':'Quản lý Phiếu Báo Cáo đã lưu'};
 document.querySelectorAll('.db-menu-item[data-tab]').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.db-menu-item').forEach(b=>b.classList.remove('active'));

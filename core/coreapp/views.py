@@ -194,7 +194,6 @@ def admin_dashboard(request):
         system_logs = SystemLog.objects.select_related('actor').all()[:300]
         
         all_documents = ScannedDocument.objects.select_related('user', 'medicine', 'reviewed_by').all()
-        all_medicines = MedicineItem.objects.select_related('approved_by').all()
 
         # Analytics Metrics
         total_users = user_accounts.count()
@@ -219,7 +218,6 @@ def admin_dashboard(request):
             'admin_accounts': admin_accounts,
             'system_logs': system_logs,
             'all_documents': all_documents,
-            'all_medicines': all_medicines,
             'metrics': {
                 'total_users': total_users,
                 'total_docs': total_docs,

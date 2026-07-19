@@ -52,11 +52,6 @@
         <span>Tài liệu (Phiếu KN)</span>
     </button>
     
-    <button class="db-menu-item" data-tab="tab-medicines">
-        <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 2v7.31"></path><path d="M14 9.3V1.99"></path><path d="M8.5 2h7"></path><path d="M14 9.3a6.5 6.5 0 1 1-4 0"></path><path d="M5.52 16h12.96"></path></svg>
-        <span>Dữ liệu Dược phẩm</span>
-    </button>
-    
     <button class="db-menu-item" data-tab="tab-logs">
         <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
         <span>Nhật ký Hệ thống</span>
@@ -456,41 +451,6 @@
                 </tr>
                 {% empty %}
                 <tr><td colspan="6" style="text-align: center; color: #64748b;">Chưa có tài liệu quét nào.</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        </div>
-    </div>
-</div>
-
-<div class="db-tab-pane hidden" id="tab-medicines">
-    <div class="card glass-card" style="padding: 20px; background: rgba(255,255,255,0.01); border-radius: 8px;">
-        <div class="table-responsive">
-        <table class="db-table">
-            <thead>
-                <tr>
-                    <th class="mobile-hide">Tên thương mại</th>
-                    <th class="mobile-show">Hoạt chất</th>
-                    <th class="mobile-hide">Số lô</th>
-                    <th class="mobile-hide">Hạn sử dụng</th>
-                    <th style="text-align: right;" class="mobile-show">Thao tác</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for med in all_medicines %}
-                <tr>
-                    <td class="mobile-hide"><strong>{{ med.trade_name }}</strong></td>
-                    <td class="mobile-show">{{ med.active_ingredient }}</td>
-                    <td class="mobile-hide">{{ med.batch_number }}</td>
-                    <td class="mobile-hide">{{ med.exp_date }}</td>
-                    <td style="text-align: right;" class="mobile-show">
-                        <div class="btn-group-action" style="justify-content: flex-end; display: flex; gap: 5px;">
-                            <button type="button" class="btn-sm btn-delete js-delete-med" data-med-id="{{ med.id }}" style="background: #ef4444; color: white; border: none; cursor: pointer;">🗑️ Xóa</button>
-                        </div>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr><td colspan="5" style="text-align: center; color: #64748b;">Chưa có dữ liệu thuốc nào.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
