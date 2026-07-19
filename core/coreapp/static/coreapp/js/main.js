@@ -332,13 +332,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const templateButtons = document.querySelectorAll('.btn-template');
 
     // LAB RECEIPT DYNAMIC MOCKUP CONTROLS & SELECTIONS (New Giai đoạn 3)
-    const btnTabWord = document.getElementById('btn-tab-word');
-    const btnTabPhoto = document.getElementById('btn-tab-photo');
-    const wordTemplatesBlock = document.getElementById('word-templates-selection');
+    
+    
+    
     const photoTemplatesBlock = document.getElementById('photo-templates-selection');
     const filePhotoLoadedView = document.getElementById('file-photo-loaded-view');
     const btnResetPhoto = document.getElementById('btn-reset-photo');
-    const panelWordForm = document.getElementById('panel-word-form');
+    
     const panelPhotoForm = document.getElementById('panel-photo-form');
     
     // Weight Uniformity target fields
@@ -392,7 +392,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const ocrProgressPercent = document.getElementById('ocr-progress-percent');
     const ocrProgressLabel = document.getElementById('ocr-progress-label');
 
-    let currentScanMode = 'word'; // 'word' or 'photo'
+    let currentScanMode = 'photo'; // 'word' or 'photo'
     let selectedDocumentKey = null;
     let isProcessing = false;
     let selectedFile = null;
@@ -728,7 +728,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
             
-            btnTabPhoto.click();
+            
             selectedFile = fileQueue[0].file;
             selectedDocumentKey = 'photo-lab';
             
@@ -749,7 +749,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             dropzonePrompt.classList.add('hidden');
-            fileLoadedView.classList.add('hidden');
+            if (fileLoadedView) fileLoadedView.classList.add('hidden');
             filePhotoLoadedView.classList.remove('hidden');
             setScanButtonState(true);
             
@@ -764,8 +764,8 @@ document.addEventListener('DOMContentLoaded', () => {
     async function runBatchOCR() {
         isProcessing = true;
         setScanButtonState(false);
-        btnTabWord.setAttribute('disabled', 'true');
-        btnTabPhoto.setAttribute('disabled', 'true');
+        
+        
         fileInput.setAttribute('disabled', 'true');
         if (btnResetPhoto) btnResetPhoto.setAttribute('disabled', 'true');
         if (btnPhotoClear) btnPhotoClear.setAttribute('disabled', 'true');
@@ -849,8 +849,8 @@ document.addEventListener('DOMContentLoaded', () => {
         
         isProcessing = false;
         setScanButtonState(true);
-        btnTabWord.removeAttribute('disabled');
-        btnTabPhoto.removeAttribute('disabled');
+        
+        
         fileInput.removeAttribute('disabled');
         if (btnResetPhoto) btnResetPhoto.removeAttribute('disabled');
         if (btnPhotoClear) btnPhotoClear.removeAttribute('disabled');
@@ -896,65 +896,6 @@ document.addEventListener('DOMContentLoaded', () => {
         logLine.innerHTML = `<span class="log-time" style="color: #64748b; margin-right: 8px;">[${timestamp}]</span> ${text}`;
         consoleLogs.appendChild(logLine);
         consoleLogs.scrollTop = consoleLogs.scrollHeight;
-    }
-
-    // Toggle Modes (Word vs Photo Scanner)
-    if (btnTabWord && btnTabPhoto) {
-        btnTabWord.addEventListener('click', () => {
-            if (isProcessing) return;
-            currentScanMode = 'word';
-            btnTabWord.classList.add('active');
-            btnTabPhoto.classList.remove('active');
-            
-            wordTemplatesBlock.classList.remove('hidden');
-            photoTemplatesBlock.classList.add('hidden');
-            
-            panelWordForm.classList.remove('hidden');
-            panelPhotoForm.classList.add('hidden');
-            
-            filePhotoLoadedView.classList.add('hidden');
-            if (selectedDocumentKey && selectedDocumentKey !== 'photo-lab') {
-                fileLoadedView.classList.remove('hidden');
-                setScanButtonState(true);
-            } else {
-                dropzonePrompt.classList.remove('hidden');
-                setScanButtonState(false);
-                updateDropzoneText('word');
-            }
-            
-            document.getElementById('btn-start-text').textContent = 'Bắt đầu Quét & Tự động điền';
-            addLog('Switched scan engine to: Word document template scanner.', 'system');
-        });
-
-        btnTabPhoto.addEventListener('click', () => {
-            if (isProcessing) return;
-            currentScanMode = 'photo';
-            btnTabPhoto.classList.add('active');
-            btnTabWord.classList.remove('active');
-            
-            photoTemplatesBlock.classList.remove('hidden');
-            wordTemplatesBlock.classList.add('hidden');
-            
-            panelPhotoForm.classList.remove('hidden');
-            panelWordForm.classList.add('hidden');
-            
-            fileLoadedView.classList.add('hidden');
-            if (selectedDocumentKey === 'photo-lab') {
-                dropzonePrompt.classList.add('hidden');
-                filePhotoLoadedView.classList.remove('hidden');
-                setScanButtonState(true);
-            } else {
-                filePhotoLoadedView.classList.add('hidden');
-                dropzonePrompt.classList.remove('hidden');
-                setScanButtonState(false);
-                updateDropzoneText('photo');
-            }
-            
-            document.getElementById('btn-start-text').textContent = 'Bắt đầu Quét AI OCR Phiếu Lab';
-            
-            addLog('Switched scan engine to: Lab balance receipt photo scanner.', 'system');
-            resetPhotoFormInputs();
-        });
     }
 
     // Mock Documents Database
@@ -1035,7 +976,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (key === 'photo-lab') {
             dropzonePrompt.classList.add('hidden');
-            fileLoadedView.classList.add('hidden');
+            if (fileLoadedView) fileLoadedView.classList.add('hidden');
             filePhotoLoadedView.classList.remove('hidden');
             setScanButtonState(true);
 
@@ -1058,16 +999,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const doc = mockDocuments[key];
         if (!doc) return;
         
-        loadedFileName.textContent = doc.fileName;
-        document.getElementById('sim-content-title').textContent = doc.paperTitle;
-        document.getElementById('sim-content-subtitle').textContent = doc.paperSub;
-        document.getElementById('sim-content-p1').textContent = doc.paperP1;
-        document.getElementById('sim-content-p2').textContent = doc.paperP2;
-        document.getElementById('sim-content-p3').textContent = doc.paperP3;
-        document.getElementById('sim-content-p4').textContent = doc.paperP4;
+        if (loadedFileName) loadedFileName.textContent = doc.fileName;
+        if (document.getElementById('sim-content-title')) document.getElementById('sim-content-title').textContent = doc.paperTitle;
+        if (document.getElementById('sim-content-subtitle')) document.getElementById('sim-content-subtitle').textContent = doc.paperSub;
+        if (document.getElementById('sim-content-p1')) document.getElementById('sim-content-p1').textContent = doc.paperP1;
+        if (document.getElementById('sim-content-p2')) document.getElementById('sim-content-p2').textContent = doc.paperP2;
+        if (document.getElementById('sim-content-p3')) document.getElementById('sim-content-p3').textContent = doc.paperP3;
+        if (document.getElementById('sim-content-p4')) document.getElementById('sim-content-p4').textContent = doc.paperP4;
 
         dropzonePrompt.classList.add('hidden');
-        fileLoadedView.classList.remove('hidden');
+        if (fileLoadedView) fileLoadedView.classList.remove('hidden');
         filePhotoLoadedView.classList.add('hidden');
         setScanButtonState(true);
 
@@ -1118,11 +1059,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // File reset clear actions
-    btnResetScan.addEventListener('click', (e) => {
+    if (btnResetScan) { btnResetScan.addEventListener('click', (e) => {
         e.stopPropagation();
         if (isProcessing) return;
         resetToInitialState();
-    });
+    }); }
 
     btnResetPhoto.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -1152,7 +1093,7 @@ document.addEventListener('DOMContentLoaded', () => {
         fileQueue = [];
         updateQueueUI();
         dropzonePrompt.classList.remove('hidden');
-        fileLoadedView.classList.add('hidden');
+        if (fileLoadedView) fileLoadedView.classList.add('hidden');
         setScanButtonState(false);
         templateButtons.forEach(btn => btn.classList.remove('active'));
         
@@ -1219,13 +1160,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Handle dropping/browsing a real user file
+    
     function simulateCustomFileUpload(fileName) {
         if (isProcessing) return;
         
         const nameLower = fileName.toLowerCase();
         // Check if user uploaded a photo of balance receipt (jpg, png)
         if (nameLower.endsWith('.jpg') || nameLower.endsWith('.jpeg') || nameLower.endsWith('.png')) {
-            btnTabPhoto.click();
             addLog(`Analyzing uploaded photo: <strong>${fileName}</strong>`, 'system');
             
             // Load real image preview
@@ -1249,7 +1190,6 @@ document.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => {
                 selectedDocumentKey = 'photo-lab';
                 dropzonePrompt.classList.add('hidden');
-                fileLoadedView.classList.add('hidden');
                 filePhotoLoadedView.classList.remove('hidden');
                 setScanButtonState(true);
                 
@@ -1266,24 +1206,9 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Default to Word file import
-        btnTabWord.click();
-        addLog(`Analyzing uploaded file: <strong>${fileName}</strong>`, 'system');
-        addLog(`Converting .docx binary stream into HTML components...`, 'process');
-        
-        setTimeout(() => {
-            let mockKey = 'paracetamol';
-            if (nameLower.includes('amox')) {
-                mockKey = 'amoxicillin';
-            } else if (nameLower.includes('vac') || nameLower.includes('flu')) {
-                mockKey = 'vaccine';
-            }
-
-            loadDocumentState(mockKey);
-            loadedFileName.textContent = fileName;
-            addLog(`Successfully converted <strong>${fileName}</strong> to local HTML layout.`, 'success');
-        }, 1200);
+        addLog(`File format not supported. Please upload an image (.jpg, .png).`, 'error');
     }
+
 
     // MAIN AI SCANNER SIMULATION ACTION (Supports Word & Photo scan pipelines)
     // Helper function to type values dynamically (Typewriter Effect)
@@ -1312,22 +1237,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Helper to dynamically update dropzone prompts based on active tab
+    
     function updateDropzoneText(mode) {
         const titleEl = document.getElementById('dropzone-title-main');
         const supportEl = document.getElementById('dropzone-support-main');
         const photoHints = document.getElementById('dropzone-photo-hints');
         if (!titleEl || !supportEl) return;
         
-        if (mode === 'word') {
-            titleEl.textContent = 'Kéo & Thả file Word ở đây';
-            supportEl.textContent = 'Hỗ trợ các định dạng: .docx, .doc, .pdf';
-            if (photoHints) photoHints.classList.add('hidden');
-        } else {
-            titleEl.textContent = 'Kéo & Thả nhiều ảnh Phiếu Cân ở đây';
-            supportEl.textContent = 'Hỗ trợ các định dạng: .jpg, .jpeg, .png';
-            if (photoHints) photoHints.classList.remove('hidden');
-        }
+        titleEl.textContent = 'Kéo & Thả nhiều ảnh Phiếu Cân ở đây';
+        supportEl.textContent = 'Hỗ trợ các định dạng: .jpg, .jpeg, .png';
+        if (photoHints) photoHints.classList.remove('hidden');
     }
+
 
     // MAIN AI SCANNER ENGINE AND PROGRESS ANIMATION LOOP
     btnStartProcess.addEventListener('click', () => {
@@ -1335,139 +1256,11 @@ document.addEventListener('DOMContentLoaded', () => {
         
         isProcessing = true;
         setScanButtonState(false);
-        btnTabWord.setAttribute('disabled', 'true');
-        btnTabPhoto.setAttribute('disabled', 'true');
+        
+        
         fileInput.setAttribute('disabled', 'true');
         
-        if (currentScanMode === 'word') {
-            if (!selectedDocumentKey) {
-                isProcessing = false;
-                setScanButtonState(true);
-                btnTabWord.removeAttribute('disabled');
-                btnTabPhoto.removeAttribute('disabled');
-                fileInput.removeAttribute('disabled');
-                return;
-            }
-            
-            btnResetScan.setAttribute('disabled', 'true');
-            templateButtons.forEach(btn => btn.setAttribute('disabled', 'true'));
-            resetFormInputs();
-            
-            laserLine.classList.remove('hidden');
-            formStatusBadge.textContent = 'Đang quét...';
-            formStatusBadge.className = 'status-badge scanning';
-            consoleStatusDot.className = 'console-status-dot active';
-            
-            if (ocrProgressBox) {
-                ocrProgressBox.classList.remove('hidden');
-                ocrProgressFill.style.width = '0%';
-                ocrProgressPercent.textContent = '0%';
-                ocrProgressLabel.textContent = 'Khởi động bộ trích xuất Word...';
-            }
-            
-            const doc = mockDocuments[selectedDocumentKey];
-            const dataKeys = Object.keys(doc.formData);
-            const loggedMilestones = new Set();
-            
-            const duration = 2500; // 2.5 seconds
-            const startTime = performance.now();
-            
-            function updateWordScan(currentTime) {
-                const elapsedTime = currentTime - startTime;
-                const progress = Math.min(elapsedTime / duration, 1);
-                const percent = Math.floor(progress * 100);
-                
-                if (ocrProgressFill) ocrProgressFill.style.width = `${percent}%`;
-                if (ocrProgressPercent) ocrProgressPercent.textContent = `${percent}%`;
-                
-                if (percent >= 0) {
-                    if (!loggedMilestones.has('w0')) {
-                        loggedMilestones.add('w0');
-                        addLog(`⚡ Bắt đầu trích xuất File Word tài liệu...`, 'process');
-                    }
-                    if (ocrProgressLabel) ocrProgressLabel.textContent = 'Khởi động bộ phân tích Word...';
-                }
-                
-                if (percent >= 12) {
-                    if (!loggedMilestones.has('w12')) {
-                        loggedMilestones.add('w12');
-                        addLog(`Đang chuyển đổi cấu trúc XML thành các thành phần HTML...`, 'process');
-                    }
-                    if (ocrProgressLabel) ocrProgressLabel.textContent = 'Đang chuyển đổi định dạng Word...';
-                }
-                
-                if (percent >= 28) {
-                    if (!loggedMilestones.has('w28')) {
-                        loggedMilestones.add('w28');
-                        addLog(`Áp dụng Mô hình Nhận diện Thực thể Dược học (NER)...`, 'process');
-                    }
-                    if (ocrProgressLabel) ocrProgressLabel.textContent = 'Đang nhận diện thực thể thuốc...';
-                }
-                
-                if (percent >= 45) {
-                    if (!loggedMilestones.has('w45')) {
-                        loggedMilestones.add('w45');
-                        addLog(`Bản đồ hóa dữ liệu trích xuất vào các trường thông tin...`, 'process');
-                        addLog(`Trích xuất thành công 10 khóa dữ liệu tiêu chuẩn.`, 'success');
-                    }
-                    if (ocrProgressLabel) ocrProgressLabel.textContent = 'Đang ánh xạ các trường biểu mẫu...';
-                }
-                
-                if (percent >= 50 && percent < 90) {
-                    const fieldsToFill = Math.min(10, Math.floor((percent - 50) / 4));
-                    if (ocrProgressLabel) ocrProgressLabel.textContent = `Đang điền thông tin thuốc (${fieldsToFill}/10)...`;
-                    
-                    for (let i = 0; i < fieldsToFill; i++) {
-                        const key = dataKeys[i];
-                        const val = doc.formData[key];
-                        const inputEl = document.getElementById(key);
-                        const indicatorEl = document.getElementById(`ind-${key}`);
-                        
-                        if (inputEl && inputEl.value === '') {
-                            inputEl.value = val;
-                            inputEl.classList.add('filled-highlight');
-                            if (indicatorEl) indicatorEl.className = 'extraction-indicator success';
-                            
-                            const labelName = document.querySelector(`label[for="${key}"]`).textContent.replace('*', '').trim();
-                            addLog(`Đã trích xuất trường <strong>${labelName}</strong>: "${val}"`, 'process');
-                        }
-                    }
-                }
-                
-                if (percent >= 90) {
-                    if (!loggedMilestones.has('w90')) {
-                        loggedMilestones.add('w90');
-                        addLog(`Bản đồ hóa dữ liệu hoàn tất. Đang kiểm tra tính toàn vẹn...`, 'success');
-                    }
-                    if (ocrProgressLabel) ocrProgressLabel.textContent = 'Đang xác thực thông tin...';
-                }
-                
-                if (percent < 100) {
-                    requestAnimationFrame(updateWordScan);
-                } else {
-                    if (ocrProgressLabel) ocrProgressLabel.textContent = 'Hoàn tất quét biểu mẫu!';
-                    
-                    for (let i = 0; i < dataKeys.length; i++) {
-                        const key = dataKeys[i];
-                        const inputEl = document.getElementById(key);
-                        if (inputEl && inputEl.value === '') {
-                            inputEl.value = doc.formData[key];
-                            inputEl.classList.add('filled-highlight');
-                            const indicatorEl = document.getElementById(`ind-${key}`);
-                            if (indicatorEl) indicatorEl.className = 'extraction-indicator success';
-                        }
-                    }
-                    
-                    setTimeout(() => {
-                        if (ocrProgressBox) ocrProgressBox.classList.add('hidden');
-                        finishScanningProcess();
-                    }, 500);
-                }
-            }
-            
-            requestAnimationFrame(updateWordScan);
-        } else {
-            // PHOTO OCR BALANCE RECEIPT MODE
+        // PHOTO OCR BALANCE RECEIPT MODE
             if (fileQueue.length > 0) {
                 runBatchOCR();
             } else if (!selectedFile) {
@@ -1479,8 +1272,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     addLog('Chưa có ảnh nào được tải lên. Vui lòng chọn ảnh phiếu cân.', 'error');
                     isProcessing = false;
                     setScanButtonState(true);
-                    btnTabWord.removeAttribute('disabled');
-                    btnTabPhoto.removeAttribute('disabled');
+                    
+                    
                     fileInput.removeAttribute('disabled');
                 }
                 return;
@@ -1489,11 +1282,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 resetPhotoFormInputs();
                 runGeminiOCR(selectedFile);
             }
-        }
     });
 
     function finishScanningProcess() {
-        laserLine.classList.add('hidden');
+        if (laserLine) laserLine.classList.add('hidden');
         
         formStatusBadge.textContent = 'Hoàn tất';
         formStatusBadge.className = 'status-badge completed';
@@ -1558,7 +1350,7 @@ document.addEventListener('DOMContentLoaded', () => {
         isProcessing = false;
         setScanButtonState(true);
         btnResetPhoto.removeAttribute('disabled');
-        btnTabWord.removeAttribute('disabled');
+        
         fileInput.removeAttribute('disabled');
 
         btnPhotoClear.removeAttribute('disabled');

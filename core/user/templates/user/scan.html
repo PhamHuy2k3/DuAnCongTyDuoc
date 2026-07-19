@@ -231,41 +231,8 @@
             <!-- Cột trái: Tải tài liệu & Trình giả lập quét -->
             <div class="scan-column scan-left">
                 <div class="card glass-card">
-                    <!-- Scan mode switcher tabs -->
-                    <div class="scan-mode-tabs" style="display: flex; border-bottom: 1px solid var(--surface-border); margin-bottom: 20px; padding-bottom: 8px; gap: 8px;">
-                        <button class="db-menu-item active" id="btn-tab-word" style="padding: 10px 14px; font-weight: 600; flex: 1; justify-content: center; margin: 0;">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="menu-icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-                            <span>Quét File Word</span>
-                        </button>
-                        <button class="db-menu-item" id="btn-tab-photo" style="padding: 10px 14px; font-weight: 600; flex: 1; justify-content: center; margin: 0;">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="menu-icon"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
-                            <span>Quét Phiếu Cân Lab</span>
-                        </button>
-                    </div>
-                    
-                    <!-- 1. WORD TEMPLATE SELECTOR VIEW (Shown in Word Tab Mode) -->
-                    <div id="word-templates-selection">
-                        <div class="quick-templates">
-                            <span class="quick-title">Chọn tài liệu mẫu nhanh:</span>
-                            <div class="template-buttons">
-                                <button class="btn-template" id="temp-para" data-target="paracetamol">
-                                    <svg class="doc-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-                                    <span>Paracetamol 500mg</span>
-                                </button>
-                                <button class="btn-template" id="temp-amox" data-target="amoxicillin">
-                                    <svg class="doc-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-                                    <span>Amoxicillin 250mg</span>
-                                </button>
-                                <button class="btn-template" id="temp-vac" data-target="vaccine">
-                                    <svg class="doc-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-                                    <span>BioFlu Vaccine</span>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
                     <!-- 2. PHOTO SELECTOR INSTRUCTIONS (Shown in Photo Tab Mode) -->
-                    <div id="photo-templates-selection" class="hidden">
+                    <div id="photo-templates-selection">
                         <!-- Multi-select hint banner -->
                         <div class="multi-select-hint-banner" style="background: linear-gradient(135deg, rgba(14, 165, 233, 0.12) 0%, rgba(16, 185, 129, 0.12) 100%); border: 1px solid rgba(14, 165, 233, 0.3); border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 12px;">
                             <div style="background: rgba(14, 165, 233, 0.15); border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
@@ -303,7 +270,7 @@
 
                     <!-- Dropzone Container -->
                     <div class="dropzone" id="document-dropzone" style="min-height: 240px; margin-bottom: 12px;">
-                        <input type="file" id="file-input" class="hidden-input" accept=".docx,.doc,.pdf,.txt,.jpg,.jpeg,.png" multiple>
+                        <input type="file" id="file-input" class="hidden-input" accept=".jpg,.jpeg,.png" multiple>
                         
                         <!-- A. Dropzone Empty / Prompt state -->
                         <div class="dropzone-content" id="dropzone-prompt">
@@ -314,10 +281,10 @@
                                     <line x1="12" y1="3" x2="12" y2="15"></line>
                                 </svg>
                             </div>
-                            <h5 id="dropzone-title-main">Kéo & Thả file Word ở đây</h5>
+                            <h5 id="dropzone-title-main">Kéo & Thả nhiều ảnh Phiếu Cân ở đây</h5>
                             <p id="dropzone-subtitle-main">Hoặc <span class="browse-link">chọn tệp từ máy tính</span></p>
                             <!-- Dynamic hint text for photo mode -->
-                            <div id="dropzone-photo-hints" class="hidden" style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--surface-border);">
+                            <div id="dropzone-photo-hints" style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--surface-border);">
                                 <div style="display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;">
                                     <span style="font-size: 0.72rem; padding: 4px 10px; background: rgba(14, 165, 233, 0.1); border: 1px solid rgba(14, 165, 233, 0.3); border-radius: 12px; color: var(--accent); font-weight: 600;">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 12px; height: 12px; vertical-align: middle; margin-right: 4px;"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
@@ -333,31 +300,7 @@
                                     </span>
                                 </div>
                             </div>
-                            <span class="file-support-text" id="dropzone-support-main">Hỗ trợ các định dạng: .docx, .doc, .pdf</span>
-                        </div>
-
-                        <!-- B. File Loaded State (Word preview) -->
-                        <div class="file-loaded-state hidden" id="file-loaded-view">
-                            <div class="document-preview-paper" style="max-height: 270px; height: 270px;">
-                                <div class="paper-header">
-                                    <div class="paper-title-container">
-                                        <div class="doc-type-badge">WORD</div>
-                                        <h4 id="loaded-file-name">Ten_file_mau.docx</h4>
-                                    </div>
-                                    <button class="btn-remove-file" id="btn-reset-scan" title="Xóa file">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                                    </button>
-                                </div>
-                                <div class="paper-content-simulate">
-                                    <div class="sim-paragraph p-title" id="sim-content-title">PHIẾU THÔNG TIN THUỐC</div>
-                                    <div class="sim-paragraph p-bold" id="sim-content-subtitle">Tên thương mại: Paracetamol Extra</div>
-                                    <div class="sim-paragraph" id="sim-content-p1">Hoạt chất chính: Acetaminophen...</div>
-                                    <div class="sim-paragraph" id="sim-content-p2">Nhà sản xuất: Công ty Medipharco...</div>
-                                    <div class="sim-paragraph" id="sim-content-p3">Số ĐK: VD-21588-14. Số lô: LOT-PARA2026...</div>
-                                    <div class="sim-paragraph" id="sim-content-p4">Chỉ định: Giảm đau hạ sốt...</div>
-                                </div>
-                                <div class="scan-laser-line hidden" id="laser-line"></div>
-                            </div>
+                            <span class="file-support-text" id="dropzone-support-main">Hỗ trợ các định dạng: .jpg, .jpeg, .png</span>
                         </div>
 
                         <!-- C. Photo Loaded State (HTML/CSS Simulated Balance Receipt & Real Preview) -->
@@ -553,119 +496,8 @@
             <!-- Cột phải: HTML Form Đích được điền tự động -->
             <div class="scan-column scan-right">
                 
-                <!-- A. PANEL 1: DRUG INFO FORM (Shown in Word Tab Mode) -->
-                <div id="panel-word-form">
-                    <div class="card glass-card form-destination-card">
-                        <div class="card-header-accent form-header-accent">
-                            <h4>2. Biểu mẫu HTML Dược phẩm (Kết quả trích xuất)</h4>
-                            <span class="status-badge" id="form-status-badge">Đang chờ quét...</span>
-                        </div>
-                        
-                        <form id="pharmaceutical-form" class="medical-form" onsubmit="event.preventDefault();">
-                            <div class="form-grid-2">
-                                <div class="form-group">
-                                    <label for="trade_name" class="form-label">Tên Thương Mại <span class="required">*</span></label>
-                                    <div class="input-wrapper">
-                                        <input type="text" id="trade_name" class="form-input" placeholder="Chưa có dữ liệu" readonly>
-                                        <span class="extraction-indicator" id="ind-trade_name"></span>
-                                    </div>
-                                </div>
-
-                                <div class="form-group">
-                                    <label for="active_ingredient" class="form-label">Hoạt Chất Chính <span class="required">*</span></label>
-                                    <div class="input-wrapper">
-                                        <input type="text" id="active_ingredient" class="form-input" placeholder="Chưa có dữ liệu" readonly>
-                                        <span class="extraction-indicator" id="ind-active_ingredient"></span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="form-grid-2">
-                                <div class="form-group">
-                                    <label for="strength" class="form-label">Hàm Lượng / Nồng Độ</label>
-                                    <div class="input-wrapper">
-                                        <input type="text" id="strength" class="form-input" placeholder="Chưa có dữ liệu" readonly>
-                                        <span class="extraction-indicator" id="ind-strength"></span>
-                                    </div>
-                                </div>
-
-                                <div class="form-group">
-                                    <label for="dosage_form" class="form-label">Dạng Bào Chế</label>
-                                    <div class="input-wrapper">
-                                        <input type="text" id="dosage_form" class="form-input" placeholder="Chưa có dữ liệu" readonly>
-                                        <span class="extraction-indicator" id="ind-dosage_form"></span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="form-group">
-                                <label for="manufacturer" class="form-label">Nhà Sản Xuất <span class="required">*</span></label>
-                                <div class="input-wrapper">
-                                    <input type="text" id="manufacturer" class="form-input" placeholder="Chưa có dữ liệu" readonly>
-                                    <span class="extraction-indicator" id="ind-manufacturer"></span>
-                                </div>
-                            </div>
-
-                            <div class="form-grid-2">
-                                <div class="form-group">
-                                    <label for="batch_number" class="form-label">Số Lô Sản Xuất <span class="required">*</span></label>
-                                    <div class="input-wrapper">
-                                        <input type="text" id="batch_number" class="form-input" placeholder="Chưa có dữ liệu" readonly>
-                                        <span class="extraction-indicator" id="ind-batch_number"></span>
-                                    </div>
-                                </div>
-
-                                <div class="form-group">
-                                    <label for="registration_number" class="form-label">Số Đăng Ký Lưu Hành</label>
-                                    <div class="input-wrapper">
-                                        <input type="text" id="registration_number" class="form-input" placeholder="Chưa có dữ liệu" readonly>
-                                        <span class="extraction-indicator" id="ind-registration_number"></span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="form-grid-2">
-                                <div class="form-group">
-                                    <label for="mfg_date" class="form-label">Ngày Sản Xuất</label>
-                                    <div class="input-wrapper">
-                                        <input type="text" id="mfg_date" class="form-input" placeholder="Chưa có dữ liệu" readonly>
-                                        <span class="extraction-indicator" id="ind-mfg_date"></span>
-                                    </div>
-                                </div>
-
-                                <div class="form-group">
-                                    <label for="exp_date" class="form-label">Hạn Sử Dụng <span class="required">*</span></label>
-                                    <div class="input-wrapper">
-                                        <input type="text" id="exp_date" class="form-input" placeholder="Chưa có dữ liệu" readonly>
-                                        <span class="extraction-indicator" id="ind-exp_date"></span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="form-group">
-                                <label for="indications" class="form-label">Chỉ Định Điều Trị / Công Dụng</label>
-                                <div class="input-wrapper">
-                                    <textarea id="indications" class="form-input form-textarea" placeholder="Chưa có dữ liệu" readonly></textarea>
-                                    <span class="extraction-indicator" id="ind-indications"></span>
-                                </div>
-                            </div>
-
-                            <!-- Actions -->
-                            <div class="form-submit-actions">
-                                <button type="button" class="btn btn-secondary flex-1" id="btn-form-clear" disabled>
-                                    <span>Làm Mới</span>
-                                </button>
-                                <button type="button" class="btn btn-primary flex-2" id="btn-form-submit" disabled>
-                                    <span>Lưu Vào Cơ Sở Dữ Liệu</span>
-                                    <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-                
                 <!-- B. PANEL 2: WEIGHT UNIFORMITY 20 PILLS FORM (Shown in Photo Tab Mode) -->
-                <div id="panel-photo-form" class="hidden">
+                <div id="panel-photo-form">
                     <div class="card glass-card form-destination-card" id="uniformity-card-glow">
                         <div class="card-header-accent form-header-accent">
                             <h4 id="uniformity-header-title">2. Kiểm nghiệm Độ đồng đều khối lượng Dược điển (20 viên)</h4>
