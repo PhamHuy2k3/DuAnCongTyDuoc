@@ -144,25 +144,25 @@ def dashboard_view(request):
             avg_accuracy = round(avg_accuracy, 1)
 
         saved_reports = SavedCOAReport.objects.filter(user=request.user).order_by('-saved_at')
-
+        
         context = {
+            'docs': docs,
+            'medicines': medicines,
             'total_scans': total_scans,
             'pending_count': pending_count,
             'approved_count': approved_count,
             'rejected_count': rejected_count,
-            'avg_accuracy': avg_accuracy,
             'latest_docs': latest_docs,
             'pending_docs': pending_docs,
             'approved_medicines': approved_medicines,
+            'avg_accuracy': avg_accuracy,
             'saved_reports': saved_reports,
         }
         return render(request, 'user/dashboard.html', context)
-        
-    except Exception as e:
-        logger.error(f"Error loading dashboard: {str(e)}")
-        messages.error(request, "Không thể tải dữ liệu dashboard")
-        return render(request, 'user/dashboard.html', {})
 
+    except Exception as e:
+        logger.error(f"Error rendering dashboard: {str(e)}")
+        return render(request, 'user/dashboard.html', {'error': 'Lỗi hệ thống khi hiển thị dashboard'})
 
 @login_required(login_url='login')
 def approve_document(request, doc_id):
@@ -172,21 +172,24 @@ def approve_document(request, doc_id):
         doc.reviewed_by = request.user
         doc.reviewed_at = timezone.now()
         doc.save()
-        if doc.medicine:
-            med = doc.medicine
-            med.approved_by = request.user
-            med.approved_at = timezone.now()
-            med.save()
-            
+
+        # If document has an associated MedicineItem, mark it approved as well
+        try:
+            if doc.medicine:
+                med = doc.medicine
+                med.approved_by = request.user
+                med.approved_at = timezone.now()
+                med.save()
+        except Exception:
+            pass
+
         log_action(request, 'DOC_APPROVED', target_type='Document',
                    target_id=doc.id, target_label=doc.file_name,
                    detail={'reviewed_by': request.user.username})
-                   
         return JsonResponse({'success': True})
     return JsonResponse({'success': False, 'error': 'Invalid method'}, status=405)
 
 
-@login_required(login_url='login')
 def reject_document(request, doc_id):
     if request.method == 'POST':
         doc = get_object_or_404(ScannedDocument, id=doc_id, user=request.user, status='pending')
@@ -612,6 +615,56 @@ def scan_receipt_api(request):
 
 @csrf_exempt
 @login_required(login_url='login')
+def scan_multi_api(request):
+    """Accept multiple image files, extract records per image, and return annotated combined records."""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Chỉ hỗ trợ phương thức POST'}, status=405)
+
+    if not request.FILES:
+        return JsonResponse({'success': False, 'error': 'Vui lòng chọn ít nhất một ảnh để tải lên'}, status=400)
+
+    try:
+        from user.services import extract_balance_receipt_records, analyze_image_quality_with_ai
+
+        combined = []
+        files = request.FILES.getlist('images') or []
+        if not files:
+            # Fall back to single 'image' key for compatibility
+            f = request.FILES.get('image')
+            if f:
+                files = [f]
+
+        for idx, uploaded in enumerate(files, start=1):
+            uploaded.seek(0)
+            quality = analyze_image_quality_with_ai(uploaded)
+            if quality == 'unrelated':
+                return JsonResponse({'success': False, 'error_code': 'unrelated_image', 'error': 'Hình ảnh không phù hợp'}, status=400)
+            if quality == 'blurry':
+                return JsonResponse({'success': False, 'error_code': 'blurry_image', 'error': 'Ảnh quá mờ'}, status=400)
+
+            uploaded.seek(0)
+            result = extract_balance_receipt_records(uploaded)
+            if isinstance(result, dict) and 'error_code' in result:
+                return JsonResponse(result, status=400)
+
+            # Annotate each returned record with source index and original filename
+            for rec in (result or []):
+                rec['source_index'] = idx
+                rec['source_name'] = getattr(uploaded, 'name', f'image_{idx}')
+                combined.append(rec)
+
+        if not combined:
+            return JsonResponse({'success': False, 'error': 'Không tìm thấy dữ liệu trong các ảnh đã tải lên'}, status=422)
+
+        return JsonResponse({'success': True, 'records': combined})
+
+    except Exception as e:
+        logger.error(f"Error processing multi receipt OCR: {str(e)}")
+        return JsonResponse({'success': False, 'error': f'Lỗi hệ thống: {str(e)}'}, status=500)
+
+
+@csrf_exempt
+@login_required(login_url='login')
 def generate_coa_from_scanned_data(request):
     """
     Generate COA HTML (Form 3 — Độ đồng đều khối lượng) dynamically from scanned weight records.
@@ -753,20 +806,20 @@ def generate_coa_from_scanned_data(request):
 
         # ── Save records to database ──────────────────────────────────────
         # 1. Tạo MedicineItem đại diện cho lô cân này
-        # drug_info keys từ scan.html: name, generic, lot, std, analysis, report, stage, issue
-        drug_name = (drug_info.get('name') or '').strip() or 'Phiếu cân Lab'
-        batch_no  = (drug_info.get('lot') or '').strip() or snr or scan_date
+        # drug_info keys từ scan.html: drug_name, generic_name, lot_number, std_number, analysis_number, report_number, stage, issue
+        drug_name = (drug_info.get('drug_name') or drug_info.get('name') or '').strip() or 'Phiếu cân Lab'
+        batch_no  = (drug_info.get('lot_number') or drug_info.get('lot') or '').strip() or snr or scan_date
 
         # Chuẩn hoá drug_info để template dynamic_coa.html dùng nhất quán
         drug_info_ctx = {
             'drug_name':       drug_name,
-            'generic_name':    drug_info.get('generic', ''),
+            'generic_name':    (drug_info.get('generic_name') or drug_info.get('generic') or '').strip(),
             'lot_number':      batch_no,
-            'std_number':      drug_info.get('std', ''),
-            'analysis_number': drug_info.get('analysis', ''),
-            'report_number':   drug_info.get('report', ''),
-            'stage':           drug_info.get('stage', 'BAO PHIM'),
-            'issue':           drug_info.get('issue', '01'),
+            'std_number':      (drug_info.get('std_number') or drug_info.get('std') or '').strip(),
+            'analysis_number': (drug_info.get('analysis_number') or drug_info.get('analysis') or '').strip(),
+            'report_number':   (drug_info.get('report_number') or drug_info.get('report') or '').strip(),
+            'stage':           (drug_info.get('stage') or '').strip() or 'BAO PHIM',
+            'issue':           (drug_info.get('issue') or '').strip() or '01',
         }
 
         med = MedicineItem.objects.create(

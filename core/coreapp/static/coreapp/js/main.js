@@ -541,71 +541,97 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function recordsMatch(rec1, rec2) {
         if (!rec1 || !rec2) return false;
-        const w1 = cleanVal(rec1.weight);
-        const w2 = cleanVal(rec2.weight);
+        const w1 = rec1.weight;
+        const w2 = rec2.weight;
         const dt1 = cleanVal(rec1.datetime);
         const dt2 = cleanVal(rec2.datetime);
 
-        // If both have weight, they must match
-        if (w1 && w2 && w1 !== '-' && w2 !== '-' && w1 !== w2) return false;
-        // If both have datetime, they must match
-        if (dt1 && dt2 && dt1 !== '-' && dt2 !== '-' && dt1 !== dt2) return false;
+        const nw1 = parseFloat(w1);
+        const nw2 = parseFloat(w2);
+        const hasNum1 = !isNaN(nw1) && nw1 > 0;
+        const hasNum2 = !isNaN(nw2) && nw2 > 0;
+        const hasDt1 = dt1 && dt1 !== '-';
+        const hasDt2 = dt2 && dt2 !== '-';
 
-        const hasSharedWeight = w1 && w2 && w1 !== '-' && w2 !== '-';
-        const hasSharedDatetime = dt1 && dt2 && dt1 !== '-' && dt2 !== '-';
-        
-        if (hasSharedWeight || hasSharedDatetime) return true;
+        // Fuzzy numeric weight match (allow ±0.015g for OCR noise)
+        if (hasNum1 && hasNum2 && Math.abs(nw1 - nw2) < 0.015) {
+            // If both also have datetime, they must match too
+            if (hasDt1 && hasDt2 && dt1 !== dt2) return false;
+            return true;
+        }
 
-        // Complement case: one has weight but no datetime, the other has datetime but no weight.
-        const hasWeight1 = w1 && w1 !== '-';
-        const hasDatetime1 = dt1 && dt1 !== '-';
-        const hasWeight2 = w2 && w2 !== '-';
-        const hasDatetime2 = dt2 && dt2 !== '-';
+        // Exact datetime match
+        if (hasDt1 && hasDt2 && dt1 === dt2) {
+            // If both also have numeric weight, they should be close
+            if (hasNum1 && hasNum2 && Math.abs(nw1 - nw2) >= 0.015) return false;
+            return true;
+        }
 
-        const isComplement = (hasWeight1 && !hasDatetime1 && !hasWeight2 && hasDatetime2) ||
-                             (!hasWeight1 && hasDatetime1 && hasWeight2 && !hasDatetime2);
-        
+        // Complement: one has weight, the other has matching datetime
+        const cw1 = cleanVal(w1);
+        const cw2 = cleanVal(w2);
+        const hasStr1 = cw1 && cw1 !== '-';
+        const hasStr2 = cw2 && cw2 !== '-';
+        const isComplement = (hasStr1 && !hasDt1 && !hasStr2 && hasDt2) ||
+                             (!hasStr1 && hasDt1 && hasStr2 && !hasDt2);
         return isComplement;
     }
 
     function findOverlap(A, B) {
+        // Find offset with the longest CONSECUTIVE match sequence.
+        // For gối-đầu: overlap MUST be at tail of A and head of B.
+        // So offset should be POSITIVE and close to A.length (e.g., A.length - 10 .. A.length).
         let bestOffset = null;
-        let maxMatches = 0;
-        const minOverlap = 1;
-        
-        for (let offset = -(B.length - 1); offset < A.length; offset++) {
-            let matches = 0;
-            let mismatches = 0;
-            let overlapCount = 0;
-            
+        let bestConsecutive = 0;
+        let bestTotal = 0;
+        const minConsecutive = 2;
+
+        // Search range: overlap at tail of A (last ~10 records) with head of B (first ~10 records)
+        const maxOverlap = Math.min(10, A.length, B.length);
+        const searchStart = Math.max(-(B.length - 1), A.length - maxOverlap - 2);
+        const searchEnd = Math.min(A.length, A.length + maxOverlap + 2);
+
+        for (let offset = searchStart; offset < searchEnd; offset++) {
+            // offset=0 means all records aligned from start — never correct for gối-đầu
+            if (offset === 0) continue;
+
+            let consecutive = 0;
+            let maxConsecutive = 0;
+            let totalMatches = 0;
+            let hasDtMatch = false;
+
             for (let i = 0; i < B.length; i++) {
                 const aIdx = offset + i;
                 if (aIdx >= 0 && aIdx < A.length) {
-                    overlapCount++;
                     if (recordsMatch(A[aIdx], B[i])) {
-                        matches++;
+                        consecutive++;
+                        totalMatches++;
+                        if (consecutive > maxConsecutive) maxConsecutive = consecutive;
+                        const dt1 = cleanVal(A[aIdx].datetime);
+                        const dt2 = cleanVal(B[i].datetime);
+                        if (dt1 && dt1 !== '-' && dt2 && dt2 !== '-' && dt1 === dt2) hasDtMatch = true;
                     } else {
-                        const wA = cleanVal(A[aIdx].weight);
-                        const wB = cleanVal(B[i].weight);
-                        const dtA = cleanVal(A[aIdx].datetime);
-                        const dtB = cleanVal(B[i].datetime);
-                        
-                        const weightMismatch = wA && wB && wA !== '-' && wB !== '-' && wA !== wB;
-                        const dateMismatch = dtA && dtB && dtA !== '-' && dtB !== '-' && dtA !== dtB;
-                        
-                        if (weightMismatch || dateMismatch) {
-                            mismatches++;
-                        }
+                        consecutive = 0;
                     }
                 }
             }
-            
-            if (overlapCount >= minOverlap && mismatches === 0 && matches > maxMatches) {
-                maxMatches = matches;
-                bestOffset = offset;
+
+            // Require datetime match ONLY if we have enough consecutive matches
+            // (3+ consecutive weight matches is strong signal even without datetime)
+            if (!hasDtMatch && maxConsecutive < 3) continue;
+
+            // Prefer offset with longest consecutive match sequence.
+            // Break ties by total matches.
+            if (maxConsecutive > bestConsecutive ||
+                (maxConsecutive === bestConsecutive && totalMatches > bestTotal)) {
+                if (maxConsecutive >= minConsecutive) {
+                    bestConsecutive = maxConsecutive;
+                    bestTotal = totalMatches;
+                    bestOffset = offset;
+                }
             }
         }
-        return { offset: bestOffset, matches: maxMatches };
+        return { offset: bestOffset, matches: bestTotal, consecutive: bestConsecutive };
     }
 
     function mergeAligned(A, B, offset) {
@@ -625,12 +651,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     weight: (recA.weight && recA.weight !== '-') ? recA.weight : (recB.weight || '-'),
                     datetime: (recA.datetime && recA.datetime !== '-') ? recA.datetime : (recB.datetime || '-'),
                     balance_type: (recA.balance_type && recA.balance_type !== '-') ? recA.balance_type : (recB.balance_type || '-'),
-                    snr: (recA.snr && recA.snr !== '-') ? recA.snr : (recB.snr || '-')
+                    snr: (recA.snr && recA.snr !== '-') ? recA.snr : (recB.snr || '-'),
+                    source_idx: recB.source_idx || recA.source_idx || ocrSessionIndex
                 });
             } else if (recA) {
                 merged.push({ ...recA });
             } else if (recB) {
-                merged.push({ ...recB });
+                merged.push({ ...recB, source_idx: recB.source_idx || ocrSessionIndex });
             }
         }
         return merged;
@@ -654,14 +681,18 @@ document.addEventListener('DOMContentLoaded', () => {
         return null;
     }
 
+    let ocrSessionIndex = 0;
+
     function stitchOcrSessions(A, B) {
+        ocrSessionIndex++;
         if (!A || A.length === 0) {
             return B.map((rec, idx) => ({
                 id: idx + 1,
                 weight: rec.weight || '-',
                 datetime: rec.datetime || '-',
                 balance_type: rec.balance_type || '-',
-                snr: rec.snr || '-'
+                snr: rec.snr || '-',
+                source_idx: ocrSessionIndex
             }));
         }
         if (!B || B.length === 0) {
@@ -675,33 +706,36 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (mode === 'prepend') {
             addLog(`Chế độ thủ công: Ghép nối đè gối TRÊN (Đặt dữ liệu mới lên đầu).`, 'success');
-            merged = [...B, ...A];
+            merged = [...B.map(r => ({...r, source_idx: r.source_idx || ocrSessionIndex})), ...A];
         } else if (mode === 'append') {
             addLog(`Chế độ thủ công: Ghép nối đè gối DƯỚI (Đặt dữ liệu mới xuống đuôi).`, 'success');
-            merged = [...A, ...B];
+            merged = [...A, ...B.map(r => ({...r, source_idx: r.source_idx || ocrSessionIndex}))];
         } else {
             // Auto mode
             const alignment = findOverlap(A, B);
             
-            if (alignment.offset !== null && alignment.matches > 0) {
-                addLog(`Phát hiện vùng gối đầu (Khớp ${alignment.matches} bản ghi trùng). Đang ghép nối...`, 'success');
+            if (alignment.offset !== null && alignment.consecutive >= 2) {
+                addLog(`Phát hiện vùng gối đầu (${alignment.consecutive} bản ghi trùng liên tiếp). Đang ghép nối...`, 'success');
+                merged = mergeAligned(A, B, alignment.offset);
+            } else if (alignment.offset !== null && alignment.matches > 0) {
+                addLog(`Phát hiện vùng gối đầu rải rác (${alignment.matches} bản ghi). Đang ghép nối...`, 'success');
                 merged = mergeAligned(A, B, alignment.offset);
             } else {
-                const timeA = getEarliestTime(A);
-                const timeB = getEarliestTime(B);
-
-                if (timeA !== null && timeB !== null) {
-                    if (timeB < timeA) {
-                        addLog(`Không tìm thấy vùng trùng lặp. Tự động sắp xếp: Dữ liệu mới in trước dữ liệu cũ (Dựa trên mốc thời gian).`, 'system');
-                        merged = [...B, ...A];
-                    } else {
-                        addLog(`Không tìm thấy vùng trùng lặp. Tự động sắp xếp: Dữ liệu mới in sau dữ liệu cũ (Dựa trên mốc thời gian).`, 'system');
-                        merged = [...A, ...B];
-                    }
-                } else {
-                    addLog(`Không thể xác định thời gian in. Tự động nối tiếp dữ liệu mới vào cuối bảng.`, 'system');
-                    merged = [...A, ...B];
-                }
+                // Fallback — no reliable overlap found.
+                // Remove EXACT duplicates (same weight string + same datetime) before concatenating.
+                // Using exact match to avoid false positives from fuzzy weight tolerance (±0.015g).
+                addLog(`Không tìm thấy vùng gối đầu rõ ràng. Đang lọc trùng lặp chính xác...`, 'system');
+                const keep = [...A];
+                B.forEach(bRec => {
+                    const bW = (bRec.weight || '').trim();
+                    const bDt = (bRec.datetime || '').trim();
+                    const dup = keep.some(aRec => 
+                        (aRec.weight || '').trim() === bW && bW !== '' && bW !== '-' &&
+                        (aRec.datetime || '').trim() === bDt && bDt !== '' && bDt !== '-'
+                    );
+                    if (!dup) keep.push({...bRec, source_idx: bRec.source_idx || ocrSessionIndex});
+                });
+                merged = keep;
             }
         }
 
@@ -712,14 +746,20 @@ document.addEventListener('DOMContentLoaded', () => {
         return merged;
     }
 
+    let appendToQueue = false;
+
     function handleMultipleFiles(files) {
         if (isProcessing) return;
-        
+
+        if (!appendToQueue) {
+            fileQueue = [];
+        }
+        appendToQueue = false;
+
         const firstFile = files[0];
         const nameLower = firstFile.name.toLowerCase();
         
         if (nameLower.endsWith('.jpg') || nameLower.endsWith('.jpeg') || nameLower.endsWith('.png')) {
-            fileQueue = [];
             for (let i = 0; i < files.length; i++) {
                 fileQueue.push({
                     file: files[i],
@@ -1026,7 +1066,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Setup input file click behavior
+    // File input click behavior
     dropzonePrompt.addEventListener('click', () => {
         fileInput.click();
     });
@@ -1057,6 +1097,40 @@ document.addEventListener('DOMContentLoaded', () => {
             handleMultipleFiles(files);
         }
     });
+
+    // Browse files button in dropzone
+    const btnBrowseFiles = document.getElementById('btn-browse-files');
+    if (btnBrowseFiles) {
+        btnBrowseFiles.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (isProcessing) return;
+            fileInput.click();
+        });
+    }
+
+    // "Tải thêm" button in queue panel
+    const btnAddMoreQueue = document.getElementById('btn-add-more-queue');
+    if (btnAddMoreQueue) {
+        btnAddMoreQueue.addEventListener('click', () => {
+            if (isProcessing) return;
+            appendToQueue = true;
+            fileInput.click();
+        });
+    }
+
+    // "Xóa tất cả" button in queue panel
+    const btnClearQueue = document.getElementById('btn-clear-queue');
+    if (btnClearQueue) {
+        btnClearQueue.addEventListener('click', () => {
+            if (isProcessing) return;
+            fileQueue = [];
+            ocrExtractedRecords = [];
+            updateQueueUI();
+            renderOcrTable([]);
+            resetToInitialState();
+            addLog('Đã xóa tất cả tệp khỏi hàng đợi.', 'system');
+        });
+    }
 
     // File reset clear actions
     if (btnResetScan) { btnResetScan.addEventListener('click', (e) => {
@@ -1094,6 +1168,7 @@ document.addEventListener('DOMContentLoaded', () => {
         updateQueueUI();
         dropzonePrompt.classList.remove('hidden');
         if (fileLoadedView) fileLoadedView.classList.add('hidden');
+        filePhotoLoadedView.classList.add('hidden');
         setScanButtonState(false);
         templateButtons.forEach(btn => btn.classList.remove('active'));
         
@@ -1263,6 +1338,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // PHOTO OCR BALANCE RECEIPT MODE
             if (fileQueue.length > 0) {
                 runBatchOCR();
+                return;
             } else if (!selectedFile) {
                 if (selectedDocumentKey === 'photo-lab') {
                     if (btnResetPhoto) btnResetPhoto.setAttribute('disabled', 'true');
@@ -1444,8 +1520,7 @@ document.addEventListener('DOMContentLoaded', () => {
             btnSyncCoa.textContent = 'Đang tạo COA...';
 
             try {
-                const targetCountVal = parseInt(document.getElementById('target-pills-count')?.value || 20);
-                const recordsToSend = ocrExtractedRecords.slice(0, targetCountVal);
+                const recordsToSend = ocrExtractedRecords;
 
                 const response = await fetch('/user/scan/coa-api/', {
                     method: 'POST',
@@ -1786,32 +1861,52 @@ document.addEventListener('DOMContentLoaded', () => {
 
         grid.innerHTML = '';
         let completedCount = 0;
+        const uniqueSources = new Set();
         
         const targetPillsCountInput = document.getElementById('target-pills-count');
         const targetCount = targetPillsCountInput ? parseInt(targetPillsCountInput.value || 20) : 20;
-        const totalCount = Math.max(ocrExtractedRecords.length, targetCount);
+
+        // Use stitched records; if fewer than target, show empty pills up to target
+        const showCount = Math.max(ocrExtractedRecords.length, targetCount);
 
         // Dynamically update the header title with the actual count of pills
         const headerTitle = document.getElementById('uniformity-header-title');
         if (headerTitle) {
-            headerTitle.textContent = `2. Kiểm nghiệm Độ đồng đều khối lượng Dược điển (${totalCount} viên)`;
+            if (ocrExtractedRecords.length > targetCount) {
+                headerTitle.textContent = `2. Kiểm nghiệm Độ đồng đều khối lượng Dược điển (${ocrExtractedRecords.length} viên - vượt ${ocrExtractedRecords.length - targetCount})`;
+            } else {
+                headerTitle.textContent = `2. Kiểm nghiệm Độ đồng đều khối lượng Dược điển (${showCount} viên)`;
+            }
         }
 
-        for (let i = 0; i < totalCount; i++) {
+        // Source color palette
+        const sourceColors = [
+            'rgba(14, 165, 233, 0.25)', '#0ea5e9',
+            'rgba(168, 85, 247, 0.25)', '#a855f7',
+            'rgba(236, 72, 153, 0.25)', '#ec4899',
+            'rgba(249, 115, 22, 0.25)', '#f97316',
+            'rgba(16, 185, 129, 0.25)', '#10b981',
+        ];
+
+        for (let i = 0; i < showCount; i++) {
             const rec = ocrExtractedRecords[i] || {};
             const hasW = rec.weight && rec.weight !== '-' && rec.weight !== '';
             const hasDt = rec.datetime && rec.datetime !== '-' && rec.datetime !== '';
+            const srcIdx = rec.source_idx || 0;
+            if (srcIdx) uniqueSources.add(srcIdx);
+
+            const srcColorIdx = ((srcIdx - 1) * 2) % sourceColors.length;
             
             let colorClass = 'background: rgba(255,255,255,0.03); border: 1px solid var(--surface-border); color: var(--text-muted);';
             let title = `Mẫu ${i+1}: Trống`;
 
             if (hasW && hasDt) {
-                colorClass = 'background: rgba(16, 185, 129, 0.15); border: 1px solid var(--success); color: var(--success); box-shadow: 0 0 6px rgba(16, 185, 129, 0.2);';
-                title = `Mẫu ${i+1}: Hoàn thành (${rec.weight} g)`;
+                colorClass = `background: ${sourceColors[srcColorIdx]}; border: 1px solid ${sourceColors[srcColorIdx + 1]}; color: ${sourceColors[srcColorIdx + 1]}; box-shadow: 0 0 6px ${sourceColors[srcColorIdx]};`;
+                title = `Mẫu ${i+1}: ${rec.weight} g (Ảnh ${srcIdx})`;
                 completedCount++;
             } else if (hasW || hasDt) {
                 colorClass = 'background: rgba(245, 158, 11, 0.15); border: 1px solid #f59e0b; color: #f59e0b; box-shadow: 0 0 6px rgba(245, 158, 11, 0.2);';
-                title = `Mẫu ${i+1}: Khuyết ${hasW ? 'ngày giờ' : 'cân nặng'}`;
+                title = `Mẫu ${i+1}: Khuyết ${hasW ? 'ngày giờ' : 'cân nặng'} (Ảnh ${srcIdx})`;
             }
 
             const pill = document.createElement('div');
@@ -1819,7 +1914,6 @@ document.addEventListener('DOMContentLoaded', () => {
             pill.title = title;
             pill.textContent = i + 1;
             
-            // Go to page & focus on click
             const pillIndex = i;
             pill.addEventListener('click', () => {
                 const recordId = pillIndex + 1;
@@ -1835,9 +1929,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (tr) {
                             tr.style.transition = 'background-color 0.5s ease';
                             tr.style.backgroundColor = 'rgba(14, 165, 233, 0.2)';
-                            setTimeout(() => {
-                                tr.style.backgroundColor = '';
-                            }, 1500);
+                            setTimeout(() => { tr.style.backgroundColor = ''; }, 1500);
                             tr.scrollIntoView({ behavior: 'smooth', block: 'center' });
                         }
                     }
@@ -1848,10 +1940,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (counter) {
-            counter.textContent = `${completedCount} / ${totalCount} mẫu hoàn tất`;
+            counter.textContent = `${completedCount} / ${showCount} mẫu hoàn tất`;
         }
 
-        // Recalculate mean, RSD etc. for calculations card
+        // Stats card
+        const statsCard = document.getElementById('stats-card');
         const parsedWeights = ocrExtractedRecords
             .map(r => parseFloat(r.weight))
             .filter(v => !isNaN(v) && v > 0);
@@ -1860,23 +1953,42 @@ document.addEventListener('DOMContentLoaded', () => {
         const valRsd = document.getElementById('val-rsd');
         const valMax = document.getElementById('val-max');
         const valMin = document.getElementById('val-min');
+        const valResult = document.getElementById('val-result');
+        const scanSummary = document.getElementById('scan-summary');
 
-        if (parsedWeights.length > 0) {
-            const mean = parsedWeights.reduce((a, b) => a + b, 0) / parsedWeights.length;
-            const variance = parsedWeights.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / parsedWeights.length;
-            const rsd = (Math.sqrt(variance) / mean) * 100;
-            const maxVal = Math.max(...parsedWeights);
-            const minVal = Math.min(...parsedWeights);
+        if (ocrExtractedRecords.length > 0 && statsCard) {
+            statsCard.style.display = 'block';
+            
+            if (parsedWeights.length > 0) {
+                const mean = parsedWeights.reduce((a, b) => a + b, 0) / parsedWeights.length;
+                const variance = parsedWeights.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / parsedWeights.length;
+                const rsd = (Math.sqrt(variance) / mean) * 100;
+                const maxVal = Math.max(...parsedWeights);
+                const minVal = Math.min(...parsedWeights);
+                const pass = rsd <= 2.0;
 
-            if (valMean) valMean.textContent = mean.toFixed(4) + ' g';
-            if (valRsd) valRsd.textContent = rsd.toFixed(2) + ' %';
-            if (valMax) valMax.textContent = maxVal.toFixed(3) + ' g';
-            if (valMin) valMin.textContent = minVal.toFixed(3) + ' g';
+                if (valMean) valMean.textContent = mean.toFixed(4) + ' g';
+                if (valRsd) valRsd.textContent = rsd.toFixed(2) + ' %';
+                if (valMax) valMax.textContent = maxVal.toFixed(3) + ' g';
+                if (valMin) valMin.textContent = minVal.toFixed(3) + ' g';
+                if (valResult) {
+                    valResult.textContent = pass ? 'Đạt' : 'Không đạt';
+                    valResult.style.color = pass ? 'var(--success)' : 'var(--danger)';
+                }
+            }
+            
+            if (scanSummary) {
+                const srcCount = uniqueSources.size;
+                scanSummary.innerHTML = `${ocrExtractedRecords.length} mẫu · ${srcCount} ảnh`;
+            }
         } else {
+            if (statsCard) statsCard.style.display = 'none';
             if (valMean) valMean.textContent = '-';
             if (valRsd) valRsd.textContent = '-';
             if (valMax) valMax.textContent = '-';
             if (valMin) valMin.textContent = '-';
+            if (valResult) { valResult.textContent = '-'; valResult.style.color = ''; }
+            if (scanSummary) scanSummary.textContent = 'Chưa quét';
         }
     }
 
@@ -1930,10 +2042,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     ? '<span class="status-badge completed">Hợp lệ</span>'
                     : '<span class="status-badge" style="background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.3); padding: 2px 6px; border-radius: 4px; font-size: 0.75rem;">Lệch > 5%</span>';
 
+                const srcIdx = r.source_idx || '';
+                const srcBadge = srcIdx ? `<span style="background: rgba(14,165,233,0.15); color: #0ea5e9; padding: 1px 5px; border-radius: 3px; font-size: 0.65rem; margin-left: 4px;">#${srcIdx}</span>` : '';
                 const tr = document.createElement('tr');
                 tr.style.borderBottom = '1px solid var(--surface-border)';
                 tr.innerHTML = `
-                    <td style="padding: 10px 16px; color: var(--text-muted);">${r.id}</td>
+                    <td style="padding: 10px 16px; color: var(--text-muted);">${r.id}${srcBadge}</td>
                     <td class="editable-cell" data-id="${r.id}" data-field="weight" contenteditable="true" style="padding: 10px 16px; font-weight: 600; color: var(--accent); border-bottom: 1px dashed rgba(14, 165, 233, 0.25); outline: none; cursor: edit;">${r.weight || '-'}</td>
                     <td class="editable-cell" data-id="${r.id}" data-field="datetime" contenteditable="true" style="padding: 10px 16px; color: var(--text-secondary); border-bottom: 1px dashed rgba(255, 255, 255, 0.05); outline: none; cursor: edit;">${r.datetime || '-'}</td>
                     <td class="editable-cell" data-id="${r.id}" data-field="balance_type" contenteditable="true" style="padding: 10px 16px; color: var(--text-secondary); border-bottom: 1px dashed rgba(255, 255, 255, 0.05); outline: none; cursor: edit;">${r.balance_type || '-'}</td>
@@ -2033,7 +2147,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const btnPrev = document.getElementById('btn-prev-page');
         const btnNext = document.getElementById('btn-next-page');
 
-        if (info) info.textContent = `Hiển thị ${filtered.length} bản ghi`;
+        if (info) info.textContent = `${filtered.length} bản ghi · Trang ${currentTablePage}/${totalPages}`;
         if (indicator) indicator.textContent = `${currentTablePage} / ${totalPages}`;
         if (btnPrev) btnPrev.disabled = currentTablePage <= 1;
         if (btnNext) btnNext.disabled = currentTablePage >= totalPages;

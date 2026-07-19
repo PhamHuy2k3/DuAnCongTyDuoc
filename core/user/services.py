@@ -54,51 +54,51 @@ VI = {'flags': re.I | re.UNICODE}
 
 PATTERNS = {
     'trade_name': [
-        re.compile(nfc(r'(?:Tên\\s*(?:thương\\s*mại|thuốc|biệt\\s*dược|gốc)\\s*[:;.]?\\s*)\\s*(.+?)(?:\\n|$)'), **VI),
-        re.compile(nfc(r'(?:Thuốc\\s*[:;.]?\\s*)\\s*(.+?)(?:\\n|$)'), **VI),
-        re.compile(nfc(r'(?:Medicine|Drug|Product)\\s*[:;.]?\\s*(.+?)(?:\\n|$)'), re.I),
+        re.compile(nfc(r'(?:Tên\s*(?:thương\s*mại|thuốc|biệt\s*dược|gốc)\s*[:;.]?\s*)\s*(.+?)(?:\n|$)'), **VI),
+        re.compile(nfc(r'(?:Thuốc\s*[:;.]?\s*)\s*(.+?)(?:\n|$)'), **VI),
+        re.compile(nfc(r'(?:Medicine|Drug|Product)\s*[:;.]?\s*(.+?)(?:\n|$)'), re.I),
     ],
     'active_ingredient': [
-        re.compile(nfc(r'(?:Hoạt\\s*chất\\s*(?:chính)?\\s*[:;.]?\\s*)\\s*(.+?)(?:\\n|$)'), **VI),
-        re.compile(nfc(r'(?:Thành\\s*phần\\s*[:;.]?\\s*)\\s*(.+?)(?:\\n|$)'), **VI),
-        re.compile(r'(?:Active\\s*Ingredient|Composition)\\s*[:;.]?\\s*(.+?)(?:\\n|$)', re.I),
+        re.compile(nfc(r'(?:Hoạt\s*chất\s*(?:chính)?\s*[:;.]?\s*)\s*(.+?)(?:\n|$)'), **VI),
+        re.compile(nfc(r'(?:Thành\s*phần\s*[:;.]?\s*)\s*(.+?)(?:\n|$)'), **VI),
+        re.compile(r'(?:Active\s*Ingredient|Composition)\s*[:;.]?\s*(.+?)(?:\n|$)', re.I),
     ],
     'strength': [
-        re.compile(nfc(r'(?:Hàm\\s*lượng\\s*[:;.]?\\s*)\\s*(.+?)(?:\\n|$)'), **VI),
-        re.compile(nfc(r'(?:Nồng\\s*độ\\s*[:;.]?\\s*)\\s*(.+?)(?:\\n|$)'), **VI),
-        re.compile(r'\\b(\\d+(?:[.,]\\d+)?\\s*(?:mg|g|ml|mcg|µg|IU|%))\\b', re.I),
+        re.compile(nfc(r'(?:Hàm\s*lượng\s*[:;.]?\s*)\s*(.+?)(?:\n|$)'), **VI),
+        re.compile(nfc(r'(?:Nồng\s*độ\s*[:;.]?\s*)\s*(.+?)(?:\n|$)'), **VI),
+        re.compile(r'\b(\d+(?:[.,]\d+)?\s*(?:mg|g|ml|mcg|µg|IU|%))\b', re.I),
     ],
     'dosage_form': [
-        re.compile(nfc(r'(?:Dạng\\s*bào\\s*chế\\s*[:;.]?\\s*)\\s*(.+?)(?:\\n|$)'), **VI),
-        re.compile(nfc(r'(?:Dạng\\s*dùng\\s*[:;.]?\\s*)\\s*(.+?)(?:\\n|$)'), **VI),
-        re.compile(r'(?:Dosage\\s*Form)\\s*[:;.]?\\s*(.+?)(?:\\n|$)', re.I),
+        re.compile(nfc(r'(?:Dạng\s*bào\s*chế\s*[:;.]?\s*)\s*(.+?)(?:\n|$)'), **VI),
+        re.compile(nfc(r'(?:Dạng\s*dùng\s*[:;.]?\s*)\s*(.+?)(?:\n|$)'), **VI),
+        re.compile(r'(?:Dosage\s*Form)\s*[:;.]?\s*(.+?)(?:\n|$)', re.I),
     ],
     'manufacturer': [
-        re.compile(nfc(r'(?:Nhà\\s*sản\\s*xuất\\s*[:;.]?\\s*)\\s*(.+?)(?:\\n|$)'), **VI),
-        re.compile(nfc(r'(?:Sản\\s*xuất\\s*bởi\\s*[:;.]?\\s*)\\s*(.+?)(?:\\n|$)'), **VI),
-        re.compile(r'(?:Manufacturer|Made\\s*by)\\s*[:;.]?\\s*(.+?)(?:\\n|$)', re.I),
+        re.compile(nfc(r'(?:Nhà\s*sản\s*xuất\s*[:;.]?\s*)\s*(.+?)(?:\n|$)'), **VI),
+        re.compile(nfc(r'(?:Sản\s*xuất\s*bởi\s*[:;.]?\s*)\s*(.+?)(?:\n|$)'), **VI),
+        re.compile(r'(?:Manufacturer|Made\s*by)\s*[:;.]?\s*(.+?)(?:\n|$)', re.I),
     ],
     'batch_number': [
-        re.compile(nfc(r'(?:Số\\s*lô(?:\\s*sản\\s*xuất)?\\s*[:;.]?\\s*)\\s*(.+?)(?:\\n|$)'), **VI),
-        re.compile(r'(?:Lot|Batch|LOT|L\\.?N\\.?)\\s*[:;.]?\\s*(\\S+)', re.I),
+        re.compile(nfc(r'(?:Số\s*lô(?:\s*sản\s*xuất)?\s*[:;.]?\s*)\s*(.+?)(?:\n|$)'), **VI),
+        re.compile(r'(?:Lot|Batch|LOT|L\.?N\.?)\s*[:;.]?\s*(\S+)', re.I),
     ],
     'registration_number': [
-        re.compile(nfc(r'(?:Số\\s*đăng\\s*ký(?:\\s*lưu\\s*hành)?\\s*[:;.]?\\s*)\\s*(.+?)(?:\\n|$)'), **VI),
-        re.compile(r'((?:VD|QLSP|SKĐK|SĐK)\\s*[:-]?\\s*[\\d]+[\\d-]*)', re.I | re.UNICODE),
-        re.compile(r'(?:Reg\\.?\\s*No\\.?)\\s*[:;.]?\\s*(.+?)(?:\\n|$)', re.I),
+        re.compile(nfc(r'(?:Số\s*đăng\s*ký(?:\s*lưu\s*hành)?\s*[:;.]?\s*)\s*(.+?)(?:\n|$)'), **VI),
+        re.compile(r'((?:VD|QLSP|SKĐK|SĐK)\s*[:-]?\s*[\d]+[\d-]*)', re.I | re.UNICODE),
+        re.compile(r'(?:Reg\.?\s*No\.?)\s*[:;.]?\s*(.+?)(?:\n|$)', re.I),
     ],
     'mfg_date': [
-        re.compile(nfc(r'(?:Ngày\\s*sản\\s*xuất\\s*[:;.]?\\s*)\\s*(.+?)(?:\\n|$)'), **VI),
-        re.compile(r'(?:NSX|SX|MFG|Mfg\\.?\\s*Date)\\s*[:;.]?\\s*(.+?)(?:\\n|$)', re.I),
+        re.compile(nfc(r'(?:Ngày\s*sản\s*xuất\s*[:;.]?\s*)\s*(.+?)(?:\n|$)'), **VI),
+        re.compile(r'(?:NSX|SX|MFG|Mfg\.?\s*Date)\s*[:;.]?\s*(.+?)(?:\n|$)', re.I),
     ],
     'exp_date': [
-        re.compile(nfc(r'(?:Hạn\\s*sử\\s*dụng\\s*[:;.]?\\s*)\\s*(.+?)(?:\\n|$)'), **VI),
-        re.compile(r'(?:HSD|Hạn|EXP|Exp\\.?\\s*Date|Expiry)\\s*[:;.]?\\s*(.+?)(?:\\n|$)', re.I),
+        re.compile(nfc(r'(?:Hạn\s*sử\s*dụng\s*[:;.]?\s*)\s*(.+?)(?:\n|$)'), **VI),
+        re.compile(r'(?:HSD|Hạn|EXP|Exp\.?\s*Date|Expiry)\s*[:;.]?\s*(.+?)(?:\n|$)', re.I),
     ],
     'indications': [
-        re.compile(nfc(r'(?:Chỉ\\s*định\\s*[:;.]?\\s*)\\s*(.+?)(?:\\.\\s*(?:Liều|Chống|Tác|Không|Thao)|(?:\\n\\s*\\n)|$)'), re.I | re.UNICODE | re.DOTALL),
-        re.compile(nfc(r'(?:Công\\s*dụng\\s*[:;.]?\\s*)\\s*(.+?)(?:\\n|$)'), **VI),
-        re.compile(r'(?:Indication|Use)\\s*[:;.]?\\s*(.+?)(?:\\n|$)', re.I),
+        re.compile(nfc(r'(?:Chỉ\s*định\s*[:;.]?\s*)\s*(.+?)(?:\.\s*(?:Liều|Chống|Tác|Không|Thao)|(?:\n\s*\n)|$)'), re.I | re.UNICODE | re.DOTALL),
+        re.compile(nfc(r'(?:Công\s*dụng\s*[:;.]?\s*)\s*(.+?)(?:\n|$)'), **VI),
+        re.compile(r'(?:Indication|Use)\s*[:;.]?\s*(.+?)(?:\n|$)', re.I),
     ],
 }
 
@@ -154,7 +154,7 @@ def parse_document(text):
             match = pattern.search(text)
             if match:
                 value = match.group(1).strip()
-                value = re.sub(r'\\s+', ' ', value)
+                value = re.sub(r'\s+', ' ', value)
                 
                 # Validation
                 if field == 'trade_name' and len(value) < 2:
